@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Runtime data (contains LinkedIn access tokens and personal data)
+data/users.json
+
+# Build output (regenerate with: npm run build)
+dist/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db

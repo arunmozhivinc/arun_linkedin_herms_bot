@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  linkedin-hermes:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: linkedin-hermes-platform
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - BASE_URL=https://your-domain.com
+      - MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/linkedin_hermes?retryWrites=true&w=majority
+      - TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+      - LINKEDIN_CLIENT_ID=your_linkedin_client_id
+      - LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
+      - LINKEDIN_REDIRECT_URI=https://your-domain.com/auth/linkedin/callback
+    volumes:
+      - ../data:/app/data
+

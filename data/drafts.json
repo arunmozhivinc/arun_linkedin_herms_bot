@@ -1,0 +1,373 @@
+{
+  "drafts": [
+    {
+      "id": "GL-20260910-001",
+      "status": "APPROVED",
+      "text": "How we optimized our Redis caching strategy in Next.js for high-read gear listings at Gear Loop.",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Modern%20software%20engineering%20aesthetic%3A%20Next.js%20Redis%20cache%20architecture%20diagram.%20Sleek%20developer%20workspace%2C%20dual%20monitors%2C%20subtle%20architecture%20diagrams%20and%20clean%20UI%20elements%2C%20cinematic%20depth%20of%20field%2C%20warm%20ambient%20lighting%2C%20highly%20detailed%2C%20photorealistic%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=963801",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\test-cycle.jpg",
+        "prompt": "Modern software engineering aesthetic: Next.js Redis cache architecture diagram. Sleek developer workspace, dual monitors, subtle architecture diagrams and clean UI elements, cinematic depth of field, warm ambient lighting, highly detailed, photorealistic, no distorted text",
+        "altText": "Post visual"
+      },
+      "metadata": {
+        "topic": "Next.js / Redis Caching",
+        "tags": [
+          "#nextjs",
+          "#redis",
+          "#softwareengineering"
+        ]
+      },
+      "contentHash": "6224483e4f093a7eeddb09e6408e6c69fa1b6bf884279a0a4b6caf19edd68162",
+      "createdAt": "2026-09-10T12:11:28.900Z",
+      "updatedAt": "2026-09-10T12:11:28.905Z",
+      "approvedAt": "2026-09-10T12:11:28.904Z",
+      "approvedBy": "test_suite",
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-002",
+      "status": "PENDING_APPROVAL",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Clean%20modern%20software%20engineering%20desk%20setup%2C%20dark%20theme%20monitor%20displaying%20Redis%20caching%20architecture%20diagram%20with%20gear%20listings%2C%20minimal%20workspace%2C%20developer%20laptop%20with%20code%2C%20warm%20ambient%20lighting%2C%20professional%20tech%20aesthetic%2C%20photorealistic%204k%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=862539",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789043767909.jpg",
+        "prompt": "Clean modern software engineering desk setup, dark theme monitor displaying Redis caching architecture diagram with gear listings, minimal workspace, developer laptop with code, warm ambient lighting, professional tech aesthetic, photorealistic 4k, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text",
+        "altText": "Redis / System Design / GearLoop"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "bf7cc655b142d2811387225e0edda8d49a655c0ab82813c7d661f3115de8fd31",
+      "createdAt": "2026-09-10T12:36:11.415Z",
+      "updatedAt": "2026-09-10T12:36:11.415Z",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-003",
+      "status": "PENDING_APPROVAL",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Technical%20architecture%20diagram%20illustration%3A%20a%20Redis%20cache%20layer%20glowing%20red%20sitting%20between%20client%20requests%20and%20a%20PostgreSQL%20database%2C%20gear%2Fproducts%20icons%20flowing%20through%20the%20cache%2C%20clean%20flat%20infographic%20style%20on%20dark%20background%2C%20data%20flow%20arrows%2C%20modern%20tech%20illustration%2C%20crisp%20vector%20look%2C%20no%20text%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=115469",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789044174249.jpg",
+        "prompt": "Technical architecture diagram illustration: a Redis cache layer glowing red sitting between client requests and a PostgreSQL database, gear/products icons flowing through the cache, clean flat infographic style on dark background, data flow arrows, modern tech illustration, crisp vector look, no text, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text",
+        "altText": "Redis / System Design / GearLoop"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "4bf1bfc6f201f8190bff6438a3ed419c9a63c02708ad2663ffc82b9147a94f6b",
+      "createdAt": "2026-09-10T12:42:57.558Z",
+      "updatedAt": "2026-09-10T12:42:57.558Z",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-004",
+      "status": "PENDING_APPROVAL",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Whiteboard-style%20technical%20flow%20diagram%20on%20a%20dark%20background%3A%20three%20nodes%20connected%20by%20arrows%20left%20to%20right%20%E2%80%94%20a%20client%2Frequester%20icon%20on%20the%20left%2C%20a%20glowing%20red%20Redis%20cache%20node%20in%20the%20middle%2C%20and%20a%20PostgreSQL%20database%20node%20on%20the%20right.%20Gear%2Fproduct%20icons%20queued%20at%20the%20client%20side.%20Clean%20flat%20vector%20diagram%2C%20infographic%20style%2C%20data%20flow%20arrows%2C%20no%20text%20labels%2C%20modern%20tech%20aesthetic%2C%20crisp%20lines%2C%20high%20resolution%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=124312",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789044213115.jpg",
+        "prompt": "Whiteboard-style technical flow diagram on a dark background: three nodes connected by arrows left to right — a client/requester icon on the left, a glowing red Redis cache node in the middle, and a PostgreSQL database node on the right. Gear/product icons queued at the client side. Clean flat vector diagram, infographic style, data flow arrows, no text labels, modern tech aesthetic, crisp lines, high resolution, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text",
+        "altText": "Redis / System Design / GearLoop"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "eb3d87be30aca7c1fd1e1b99fde6f2644174658b267e59d0a3522b79d3eb2528",
+      "createdAt": "2026-09-10T12:43:42.457Z",
+      "updatedAt": "2026-09-10T12:43:42.457Z",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-005",
+      "status": "PENDING_APPROVAL",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/A%20clean%20flat%20illustration%20on%20dark%20background%20showing%20three%20separate%20elements%20arranged%20left%20to%20right%20with%20arrows%20between%20them%3A%20on%20the%20far%20left%20a%20laptop%20screen%20icon%20showing%20gear%20icons%20being%20requested%2C%20in%20the%20center%20a%20bright%20red%20cylindrical%20canister%20labeled%20as%20a%20fast%20cache%20layer%2C%20on%20the%20far%20right%20a%20blue%20database%20cylinder.%20Black%20arrows%20point%20from%20the%20laptop%20to%20the%20red%20canister%20and%20from%20the%20red%20canister%20to%20the%20blue%20database.%20Modern%20minimalist%20vector%20illustration%2C%20infographic%20poster%20style%2C%20no%20text%2C%20high%20resolution%2C%20sharp%20edges%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=898915",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789044259368.jpg",
+        "prompt": "A clean flat illustration on dark background showing three separate elements arranged left to right with arrows between them: on the far left a laptop screen icon showing gear icons being requested, in the center a bright red cylindrical canister labeled as a fast cache layer, on the far right a blue database cylinder. Black arrows point from the laptop to the red canister and from the red canister to the blue database. Modern minimalist vector illustration, infographic poster style, no text, high resolution, sharp edges, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text",
+        "altText": "Redis / System Design / GearLoop"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "7d8299dbe78274c76371611de1db03e76b3462ec1c3c1090c3deb561025a93d9",
+      "createdAt": "2026-09-10T12:44:27.451Z",
+      "updatedAt": "2026-09-10T12:44:27.451Z",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-006",
+      "status": "PENDING_APPROVAL",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Professional%20LinkedIn%20headshot%20portrait%20of%20Arun%20Vincily%20V%2C%20a%20South%20Asian%20man%20in%20his%20late%2020s%2C%20clean-shaven%20with%20short%20dark%20hair%2C%20wearing%20a%20well-fitted%20navy%20blue%20business%20suit%20with%20a%20crisp%20white%20dress%20shirt%20and%20a%20subtle%20dark%20burgundy%20tie%2C%20standing%20in%20a%20modern%20glass-walled%20office%20environment%20with%20warm%20natural%20daylight%20streaming%20through%20windows%20in%20the%20background%2C%20confident%20and%20approachable%20expression%20with%20a%20slight%20smile%2C%20photorealistic%2085mm%20portrait%20photography%2C%20shallow%20depth%20of%20field%20blurring%20the%20office%20background%2C%20sharp%20focus%20on%20the%20face%2C%20high-end%20corporate%20headshot%20aesthetic%2C%20professional%20lighting%2C%20high%20resolution%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=402441",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789044446239.jpg",
+        "prompt": "Professional LinkedIn headshot portrait of Arun Vincily V, a South Asian man in his late 20s, clean-shaven with short dark hair, wearing a well-fitted navy blue business suit with a crisp white dress shirt and a subtle dark burgundy tie, standing in a modern glass-walled office environment with warm natural daylight streaming through windows in the background, confident and approachable expression with a slight smile, photorealistic 85mm portrait photography, shallow depth of field blurring the office background, sharp focus on the face, high-end corporate headshot aesthetic, professional lighting, high resolution, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text",
+        "altText": "Redis / System Design / GearLoop"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "b2ef24c96e1a170673f9ac0ec348b170673265a2fadd4ce7fb7e5f32cd3b0e3d",
+      "createdAt": "2026-09-10T12:47:30.345Z",
+      "updatedAt": "2026-09-10T12:47:30.345Z",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null
+    },
+    {
+      "id": "GL-20260910-007",
+      "status": "PUBLISHED",
+      "text": "What I learned optimising Redis caching for high-read gear listings at GearLoop\n\nGearLoop gear listing pages are read-heavy — browsers preload, recommendation widgets fire parallel calls, and a single listing view can trigger a dozen downstream queries before the page paints. When traffic spikes, that pattern hits the database first and the UI second. We decided to flip that.\n\nA few things stood out after going through the Redis layers:\n\n1. Not every read deserves the same cache.\nListings, availability windows, pricing, and images all have different refresh needs. We stopped treating the listing endpoint as one cache entry and split it into composable fragments — static-ish metadata gets a long TTL, availability gets a short one with explicit invalidation, and computed pricing stays out of cache unless the inputs are stable. Granularity matters more than TTL tuning alone.\n\n2. Cache-aside is the default, but invalidate deliberately.\nThe easy win is cache-aside: read through Redis, fall back to the DB, write back on miss. The hard part people skip is invalidation. We wired cache invalidation into the write paths that actually change listing data — price updates, availability changes, image swaps — instead of relying on expiry to eventually correct things. If you don't invalidate on write, you'll spend your time debugging stale listings, not slow queries.\n\n3. Key design determines how much you can invalidate cleanly.\nA good key scheme makes targeted invalidation cheap. We moved from flat keys toward structured ones that encode the resource, the variant, and the version, so a single logical change can invalidate exactly what it should without blanket flushes.\n\n4. Cache warming beats cold starts on the hot paths.\nFor the most-read listings, waiting for the first request to populate the cache meant the Cache-Miss penalty hit real users. We added targeted warm-up for high-traffic items after edits and during deploy, so the cache is already useful when traffic arrives.\n\n5. Measure before and after, not just \"it feels faster.\"\nLatency percentiles, hit rates, and DB load are the numbers that matter here. We watched p95/p99 on the listing endpoints drop and DB query volume come down on the read paths.\n\nWhat didn't work:\n- One big cache for everything — invalidation became impossible.\n- Long TTLs without invalidation — stale data that was hard to explain.\n- Caching derived values whose inputs changed independently — subtle bugs that only showed up under real traffic.\n\nThe throughline: Redis is straightforward to add. Getting it right for a high-read listing surface is mostly about what you invalidate, when, and how you key it.\n\nHappy to swap notes if you're working on similar read-heavy surfaces — what's been the biggest caching gotcha on your side?",
+      "media": {
+        "type": "image",
+        "url": "file://D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_arun_workstation_real.jpg",
+        "path": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_arun_workstation_real.jpg",
+        "prompt": "Real developer workstation photo — multi-monitor setup with Contra Shift Planner, code editor, ThinkPad, coffee mug, water bottle",
+        "altText": "Arun Vincily V — developer workstation"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "9d738af60e983b99c9a95c95847ee0b33568f992012ef3c631a92b1cc36b9de9",
+      "createdAt": "2026-09-10T12:54:31.949Z",
+      "updatedAt": "2026-09-10T13:01:11.975Z",
+      "approvedAt": "2026-09-10T13:00:56.957Z",
+      "approvedBy": "telegram_user",
+      "publishedAt": "2026-09-10T13:01:11.973Z",
+      "postId": "urn:li:share:7503799735158378496",
+      "authorUrn": "urn:li:person:BppbSXuVoW"
+    },
+    {
+      "id": "GL-20260910-008",
+      "status": "PUBLISHED",
+      "text": "Our Redis caching strategy at GearLoop — what we actually built\n\nAfter the first round of caching at GearLoop, we learned pretty quickly that adding Redis is the easy part. Deciding what to cache, how long, and when to throw it away — that's where the real design work lives.\n\nHere's the strategy we settled on for the high-read gear listing surface:\n\nLayer 1: Static metadata, long TTL.\nThings like gear name, description, images, category — data that changes rarely and costs real DB attention to fetch. These get a generous TTL and only refresh when an edit actually happens. No point hitting PostgreSQL for a gear description on every page view.\n\nLayer 2: Availability windows, short TTL + explicit invalidation.\nThis is the tricky one. Availability is dynamic, time-sensitive, and wrong data here means double-bookings or frustrated renters. We keep these entries short-lived AND invalidate them the moment a booking changes. Short TTL is the safety net; invalidation is the real mechanism.\n\nLayer 3: Computed pricing — only cache when inputs are stable.\nPricing depends on dates, add-ons, taxes, fees, promo codes. If any of those inputs are volatile, caching the result creates more problems than it solves. We cache pricing only when we can prove the inputs are stable for the TTL window.\n\nLayer 4: Cache warming for the hot items.\nThe most-viewed listings shouldn't pay the cold-start penalty on their first request after a deploy or an edit. We warm the cache for high-traffic items proactively, so the cache is useful before the traffic arrives.\n\nThe invalidation discipline is the part that took the most effort:\n- Every write path that changes listing data explicitly invalidates the relevant cache entries.\n- We don't rely on TTL expiry to eventually fix stale data.\n- Keys are structured (resource + variant + version) so invalidation is targeted, not blunt.\n\nA few things we deliberately did NOT do:\n- One giant cache entry for the whole listing — impossible to invalidate cleanly.\n- Long TTLs with no invalidation plan — stale data you can't explain.\n- Caching derived values with volatile inputs — subtle bugs under real traffic.\n\nThe numbers we watch: p95/p99 on the listing endpoints, cache hit rate on the read paths, and DB query volume. Those tell us whether the cache is actually helping or just moving the problem around.\n\nRedis is simple to add. Getting the strategy right — granularity, invalidation, key design, warming — that's the actual engineering work. Most of the value is in the decisions, not the library.\n\nWhat's your approach to layered caching on read-heavy surfaces? Curious how others think about the TTL vs invalidation tradeoff.",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Minimalist%20dark%20tech%20background%20with%20subtle%20horizontal%20grid%20lines%20fading%20into%20deep%20black%2C%20a%20single%20glowing%20red%20horizontal%20accent%20bar%20in%20the%20center%20evoking%20a%20Redis%20cache%20layer%2C%20soft%20ambient%20lighting%2C%20clean%20modern%20software%20engineering%20aesthetic%2C%20abstract%20and%20elegant%2C%20high%20resolution%2C%20no%20text%2C%20no%20logos%2C%20professional%20tech%20visual?width=1200&height=627&model=flux&nologo=true&seed=382910",
+        "path": null,
+        "prompt": "Minimalist dark tech background with subtle horizontal grid lines fading into deep black, a single glowing red horizontal accent bar in the center evoking a Redis cache layer, soft ambient lighting, clean modern software engineering aesthetic, abstract and elegant, high resolution, no text, no logos",
+        "altText": "Redis caching strategy — layered cache visual"
+      },
+      "metadata": {
+        "topic": "Redis / System Design / GearLoop",
+        "tags": [
+          "#redis",
+          "#systemdesign",
+          "#caching",
+          "#gearloop",
+          "#backendengineering"
+        ]
+      },
+      "contentHash": "3bc9de47da9787c58ac6288505693a219bf0491119b5844a2a6066a256df6439",
+      "createdAt": "2026-09-10T16:37:25.863Z",
+      "updatedAt": "2026-09-10T16:44:18.602Z",
+      "approvedAt": "2026-09-10T16:44:16.430Z",
+      "approvedBy": "telegram_user",
+      "publishedAt": "2026-09-10T16:44:18.601Z",
+      "postId": "urn:li:share:7503855883810967553",
+      "authorUrn": "urn:li:person:BppbSXuVoW"
+    },
+    {
+      "articleContent": null,
+      "approvedBy": null,
+      "authorUrn": null,
+      "_id": "6aa2df6fbcc4cbab2c148e50",
+      "draftId": "GL-20260910-009",
+      "approvedAt": null,
+      "contentHash": "test-hash-009",
+      "createdAt": "2026-09-10T16:48:47.507Z",
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Modern%20software%20engineering%20workspace%20with%20clean%20architecture%20diagrams%2C%20warm%20lighting?width=1200&height=627&model=flux&nologo=true",
+        "prompt": "Modern software engineering workspace with clean architecture diagrams, warm lighting"
+      },
+      "metadata": {
+        "topic": "Autonomous Agent Architecture"
+      },
+      "postId": null,
+      "postType": "SHORT_POST",
+      "publishedAt": null,
+      "status": "REJECTED",
+      "text": "Testing the live approval workflow for LinkedIn AutoPilot:\n\n1. Autonomous topic research via Hermes\n2. Real-time visual generation via Pollinations\n3. 1-Tap Mobile Review in Telegram\n\nTap Approve to publish or Skip to discard!",
+      "updatedAt": "2026-09-10T16:52:02.420Z",
+      "userId": "1623358470",
+      "rejectionReason": "Rejected via Telegram button"
+    },
+    {
+      "_id": "6aa2e29d62c6e46571ea5505",
+      "draftId": "GL-20260910-010",
+      "userId": "1623358470",
+      "postType": "SHORT_POST",
+      "status": "PUBLISHED",
+      "text": "What I've learned working with redis caching strategies at scale in production:\n\nWhen scaling systems under real traffic, architectural simplicity usually beats clever abstractions. Here are 3 concrete lessons from our engineering stack:\n\n1. Measure boundaries first: Before optimizing internal algorithms, instrument database connection latency, cache hit ratios, and network serialization overhead.\n\n2. Design for failure isolation: Decouple read-heavy paths from state-mutating writes so spikes in user traffic don't cascade into transactional outages.\n\n3. Invalidation discipline: Caching is easy; deciding when and how keys expire without causing thundering herds is where the real design work lives.\n\nEngineers: what's the hardest production trade-off you've encountered with redis caching strategies at scale? Let's swap notes in the comments.",
+      "articleContent": null,
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Modern%20software%20architecture%20diagram%20and%20high-end%20developer%20workspace%20for%20redis%20caching%20strategies%20at%20scale%2C%20clean%20glowing%20UI%2C%20dual%20monitors%2C%20subtle%20code%20elements%2C%20cinematic%20ambient%20lighting%2C%20photorealistic%2C%208k%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=918790",
+        "localPath": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789059737189.jpg",
+        "prompt": "Modern software architecture diagram and high-end developer workspace for redis caching strategies at scale, clean glowing UI, dual monitors, subtle code elements, cinematic ambient lighting, photorealistic, 8k, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text"
+      },
+      "metadata": {
+        "topic": "redis caching strategies at scale",
+        "tags": [
+          "#rediscachingstrategiesatscale",
+          "#softwareengineering",
+          "#systemdesign",
+          "#backend",
+          "#techleadership"
+        ]
+      },
+      "contentHash": "285c783df7b16f822e71954a7fe96d2b2c99b2b7014792839539ea99785b715e",
+      "approvedAt": "2026-09-10T17:02:37.348Z",
+      "approvedBy": "telegram_1623358470",
+      "publishedAt": "2026-09-10T17:02:40.861Z",
+      "postId": "urn:li:share:7503860507364368384",
+      "authorUrn": "urn:li:person:BppbSXuVoW",
+      "rejectionReason": null,
+      "createdAt": "2026-09-10T17:02:21.328Z",
+      "updatedAt": "2026-09-10T17:02:40.861Z",
+      "__v": 0
+    },
+    {
+      "draftId": "GL-20260910-011",
+      "userId": "1623358470",
+      "postType": "SHORT_POST",
+      "status": "PENDING_APPROVAL",
+      "text": "What I've learned working with What other things you can provide? in production:\n\nWhen scaling systems under real traffic, architectural simplicity usually beats clever abstractions. Here are 3 concrete lessons from our engineering stack:\n\n1. Measure boundaries first: Before optimizing internal algorithms, instrument database connection latency, cache hit ratios, and network serialization overhead.\n\n2. Design for failure isolation: Decouple read-heavy paths from state-mutating writes so spikes in user traffic don't cascade into transactional outages.\n\n3. Invalidation discipline: Caching is easy; deciding when and how keys expire without causing thundering herds is where the real design work lives.\n\nEngineers: what's the hardest production trade-off you've encountered with What other things you can provide?? Let's swap notes in the comments.",
+      "articleContent": null,
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Modern%20software%20architecture%20diagram%20and%20high-end%20developer%20workspace%20for%20What%20other%20things%20you%20can%20provide%3F%2C%20clean%20glowing%20UI%2C%20dual%20monitors%2C%20subtle%20code%20elements%2C%20cinematic%20ambient%20lighting%2C%20photorealistic%2C%208k%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=425563",
+        "localPath": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789060363007.jpg",
+        "prompt": "Modern software architecture diagram and high-end developer workspace for What other things you can provide?, clean glowing UI, dual monitors, subtle code elements, cinematic ambient lighting, photorealistic, 8k, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text"
+      },
+      "metadata": {
+        "topic": "What other things you can provide?",
+        "tags": [
+          "#whatotherthingsyoucanprovide",
+          "#softwareengineering",
+          "#systemdesign",
+          "#backend",
+          "#techleadership"
+        ]
+      },
+      "contentHash": "115d67cc2f7ac91d728b34ac3159859b59aef4257d9f7dbb29ddd2a05da3ce4e",
+      "approvedAt": null,
+      "approvedBy": null,
+      "publishedAt": null,
+      "postId": null,
+      "authorUrn": null,
+      "rejectionReason": null,
+      "_id": "6aa2e51062c6e46571ea550e",
+      "createdAt": "2026-09-10T17:12:48.923Z",
+      "updatedAt": "2026-09-10T17:12:48.923Z",
+      "__v": 0
+    },
+    {
+      "_id": "6aa2e6da62c6e46571ea5512",
+      "draftId": "GL-20260910-012",
+      "userId": "1623358470",
+      "postType": "SHORT_POST",
+      "status": "PUBLISHED",
+      "text": "What I've learned working with Can you give another post in production:\n\nWhen scaling systems under real traffic, architectural simplicity usually beats clever abstractions. Here are 3 concrete lessons from our engineering stack:\n\n1. Measure boundaries first: Before optimizing internal algorithms, instrument database connection latency, cache hit ratios, and network serialization overhead.\n\n2. Design for failure isolation: Decouple read-heavy paths from state-mutating writes so spikes in user traffic don't cascade into transactional outages.\n\n3. Invalidation discipline: Caching is easy; deciding when and how keys expire without causing thundering herds is where the real design work lives.\n\nEngineers: what's the hardest production trade-off you've encountered with Can you give another post? Let's swap notes in the comments.",
+      "articleContent": null,
+      "media": {
+        "type": "image",
+        "url": "https://image.pollinations.ai/prompt/Modern%20software%20architecture%20diagram%20and%20high-end%20developer%20workspace%20for%20Can%20you%20give%20another%20post%2C%20clean%20glowing%20UI%2C%20dual%20monitors%2C%20subtle%20code%20elements%2C%20cinematic%20ambient%20lighting%2C%20photorealistic%2C%208k%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text%2C%20professional%20photography%2C%20high%20resolution%2C%20subtle%20tech%20aesthetic%2C%20cinematic%20lighting%2C%20crisp%20focus%2C%20no%20distorted%20text?width=1200&height=627&model=flux&nologo=true&seed=993640",
+        "localPath": "D:\\workspace\\linkedin-hermes-mcp\\data\\images\\img_1789060822389.jpg",
+        "prompt": "Modern software architecture diagram and high-end developer workspace for Can you give another post, clean glowing UI, dual monitors, subtle code elements, cinematic ambient lighting, photorealistic, 8k, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text"
+      },
+      "metadata": {
+        "topic": "Can you give another post",
+        "tags": [
+          "#canyougiveanotherpost",
+          "#softwareengineering",
+          "#systemdesign",
+          "#backend",
+          "#techleadership"
+        ]
+      },
+      "contentHash": "ca96e815d9229ea474b4ce531b098b991454a8607c9e0fe1b3ea8d1e7ea83674",
+      "approvedAt": "2026-09-10T17:20:29.761Z",
+      "approvedBy": "telegram_1623358470",
+      "publishedAt": "2026-09-10T17:20:33.755Z",
+      "postId": "urn:li:share:7503865006959185920",
+      "authorUrn": "urn:li:person:BppbSXuVoW",
+      "rejectionReason": null,
+      "createdAt": "2026-09-10T17:20:26.098Z",
+      "updatedAt": "2026-09-10T17:20:33.756Z",
+      "__v": 0
+    }
+  ]
+}
