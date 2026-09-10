@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, Inject, forwardRef } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Telegraf, Markup } from "telegraf";
 import { INotificationChannel, DraftPreviewPayload } from "../channel.interface";
@@ -7,6 +7,27 @@ import { DraftsService } from "../../drafts/drafts.service";
 import { ContentService } from "../../content/content.service";
 import { ImageService } from "../../image/image.service";
 import { LinkedInPublisherService } from "../../linkedin/linkedin-publisher.service";
+
+const AVAILABLE_POSITIONS = [
+  "Backend Developer",
+  "Frontend Developer",
+  "Full-Stack Engineer",
+  "DevOps / Cloud Engineer",
+  "AI / ML Engineer",
+  "System Architect",
+  "Engineering Lead",
+];
+
+const AVAILABLE_SKILLS = [
+  "Node.js / TypeScript",
+  "Python / FastAPI",
+  "Docker & Kubernetes",
+  "AWS / Cloud Infra",
+  "MongoDB & PostgreSQL",
+  "React & Next.js",
+  "System Design & Scale",
+  "LLMs & AI Agents",
+];
 
 @Injectable()
 export class TelegramService implements INotificationChannel, OnModuleInit {
@@ -33,7 +54,6 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
     try {
       this.bot = new Telegraf(token);
 
-      // Global error handler to catch API issues without crashing
       this.bot.catch((err: any, ctx) => {
         this.logger.error(`Telegram Bot Error for update ${ctx.update.update_id}: ${err.message}`);
       });
@@ -50,10 +70,6 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
     }
   }
 
-  /**
-   * Telegram strictly forbids localhost or 127.0.0.1 inside inline keyboard buttons.
-   * Public HTTPS or standard web domains are allowed.
-   */
   private isValidTelegramButtonUrl(url?: string): boolean {
     if (!url) return false;
     if (url.includes("localhost") || url.includes("127.0.0.1")) return false;
@@ -65,53 +81,188 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
     }
   }
 
+  private buildPositionsKeyboard(selected: string[] = []) {
+    const rows = AVAILABLE_POSITIONS.map((pos, idx) => {
+      const isChecked = selected.includes(pos);
+      return [Markup.button.callback(`${isChecked ? "✅" : "⬜"} ${pos}`, `pos_toggle_${idx}`)];
+    });
+    rows.push([Markup.button.callback("➡️ Save & Continue to Skills (Q3)", "pos_done")]);
+    return Markup.inlineKeyboard(rows);
+  }
+
+  private buildSkillsKeyboard(selected: string[] = []) {
+    const rows = AVAILABLE_SKILLS.map((skill, idx) => {
+      const isChecked = selected.includes(skill);
+      return [Markup.button.callback(`${isChecked ? "✅" : "⬜"} ${skill}`, `skill_toggle_${idx}`)];
+    });
+    rows.push([Markup.button.callback("➡️ Save & Continue to Background (Q4)", "skill_done")]);
+    return Markup.inlineKeyboard(rows);
+  }
+
   private setupHandlers() {
     if (!this.bot) return;
 
-    // /start command - Zero-setup onboarding
+    // ----------------------------------------------------
+    // /start - Launch 5-Question Onboarding Wizard
+    // ----------------------------------------------------
     this.bot.start(async (ctx) => {
       try {
         const chatId = String(ctx.chat.id);
         const name = ctx.from?.first_name || "Professional";
-        const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
 
         await this.usersService.findOrCreateUser(chatId, name);
+        await this.usersService.updateUser(chatId, { onboardingStep: "NAME" });
 
-        const authUrl = `${baseUrl}/auth/linkedin?userId=${chatId}`;
-
-        if (this.isValidTelegramButtonUrl(authUrl)) {
-          await ctx.reply(
-            `👋 Welcome to **Hermes LinkedIn AutoPilot**, ${name}!\n\n` +
-              `You can now message me **any topic** (e.g. *"Write a post about Redis caching"* or *"How we design microservices"*), and I will generate the post, render the image, and queue it for your approval!\n\n` +
-              `**Step 1:** Connect your LinkedIn profile:\n\n` +
-              `👉 **[Click Here to Connect LinkedIn](${authUrl})**\n\n` +
-              `💡 *Tip: If the in-app browser shows a blank page, tap the (⋮) menu at the top right and select "Open in Chrome" or "Open in Safari".*`,
-            {
-              parse_mode: "Markdown",
-              ...Markup.inlineKeyboard([
-                [Markup.button.url("🔗 Connect LinkedIn Profile", authUrl)],
-              ]),
-            }
-          );
-        } else {
-          await ctx.reply(
-            `👋 Welcome to **Hermes LinkedIn AutoPilot**, ${name}!\n\n` +
-              `You can now message me **any topic** (e.g. *"Write a post about Redis caching"*), and I will generate the post, render the image, and queue it for your approval!\n\n` +
-              `**Step 1:** Click the link below to connect your LinkedIn profile:\n\n` +
-              `👉 **[Connect LinkedIn Profile](${authUrl})**\n\n` +
-              `*(Or copy-paste into your browser:*\n\`${authUrl}\`*)*`,
-            {
-              parse_mode: "Markdown",
-            }
-          );
-        }
+        await ctx.reply(
+          `👋 Welcome to **LinkedIn AutoPilot**, ${name}!\n\n` +
+            `I create high-performing, authentic LinkedIn posts with AI visuals on schedule.\n\n` +
+            `Let's personalize your setup in **5 quick questions**:\n\n` +
+            `**Question 1 of 5: What is your full name?**\n` +
+            `Type your full name below, or tap Keep below:`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback(`Keep "${name}"`, "name_keep")],
+            ]),
+          }
+        );
       } catch (err: any) {
-        this.logger.error(`Error in /start handler: ${err.message}`);
-        await ctx.reply(`Welcome! An error occurred during setup: ${err.message}`);
+        this.logger.error(`Error in /start: ${err.message}`);
+        await ctx.reply(`Welcome! An error occurred: ${err.message}`);
       }
     });
 
-    // Callback queries from Inline Buttons (Approve / Reject)
+    // ----------------------------------------------------
+    // Q1: Name Handler (Button callback or text)
+    // ----------------------------------------------------
+    this.bot.action("name_keep", async (ctx) => {
+      await ctx.answerCbQuery();
+      const chatId = String(ctx.chat.id);
+      const user = await this.usersService.getUser(chatId);
+      await this.usersService.updateUser(chatId, { onboardingStep: "POSITION" });
+      await this.promptPositionQuestion(ctx, user?.positions || []);
+    });
+
+    // ----------------------------------------------------
+    // Q2: Position Multi-Select Toggles
+    // ----------------------------------------------------
+    this.bot.action(/^pos_toggle_(\d+)$/, async (ctx) => {
+      const idx = parseInt(ctx.match[1], 10);
+      const pos = AVAILABLE_POSITIONS[idx];
+      const chatId = String(ctx.chat.id);
+      if (!pos) return;
+
+      const updated = await this.usersService.toggleUserPosition(chatId, pos);
+      await ctx.answerCbQuery(`${updated.includes(pos) ? "Selected" : "Removed"} ${pos}`);
+      try {
+        await ctx.editMessageReplyMarkup(this.buildPositionsKeyboard(updated).reply_markup);
+      } catch {}
+    });
+
+    this.bot.action("pos_done", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const user = await this.usersService.getUser(chatId);
+      if (!user.positions || user.positions.length === 0) {
+        await ctx.answerCbQuery("⚠️ Please select at least 1 position!");
+        return;
+      }
+
+      await ctx.answerCbQuery("Positions saved!");
+      await this.usersService.updateUser(chatId, { onboardingStep: "SKILLS" });
+      await this.promptSkillsQuestion(ctx, user.skills || []);
+    });
+
+    // ----------------------------------------------------
+    // Q3: Skills Multi-Select Toggles
+    // ----------------------------------------------------
+    this.bot.action(/^skill_toggle_(\d+)$/, async (ctx) => {
+      const idx = parseInt(ctx.match[1], 10);
+      const skill = AVAILABLE_SKILLS[idx];
+      const chatId = String(ctx.chat.id);
+      if (!skill) return;
+
+      const updated = await this.usersService.toggleUserSkill(chatId, skill);
+      await ctx.answerCbQuery(`${updated.includes(skill) ? "Selected" : "Removed"} ${skill}`);
+      try {
+        await ctx.editMessageReplyMarkup(this.buildSkillsKeyboard(updated).reply_markup);
+      } catch {}
+    });
+
+    this.bot.action("skill_done", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const user = await this.usersService.getUser(chatId);
+      if (!user.skills || user.skills.length === 0) {
+        await ctx.answerCbQuery("⚠️ Please select at least 1 skill!");
+        return;
+      }
+
+      await ctx.answerCbQuery("Skills saved!");
+      await this.usersService.updateUser(chatId, { onboardingStep: "CUSTOM_DATA" });
+
+      await ctx.reply(
+        `📝 **Question 4 of 5: Custom Background / Voice Training**\n\n` +
+          `Tell me a bit about your experience, past companies, major projects, or preferred tone to train your personal AI.\n\n` +
+          `*(Example: "Senior engineer with 6 years building high-throughput payment pipelines. I love pragmatic code and database internals.")*\n\n` +
+          `Reply with your text below, or tap Skip:`,
+        {
+          parse_mode: "Markdown",
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback("⏩ Skip Background", "skip_bio")],
+          ]),
+        }
+      );
+    });
+
+    // ----------------------------------------------------
+    // Q4: Skip Background
+    // ----------------------------------------------------
+    this.bot.action("skip_bio", async (ctx) => {
+      await ctx.answerCbQuery();
+      const chatId = String(ctx.chat.id);
+      await this.usersService.updateUser(chatId, { onboardingStep: "SCHEDULE" });
+      await this.promptScheduleQuestion(ctx);
+    });
+
+    // ----------------------------------------------------
+    // Q5: Schedule Selection
+    // ----------------------------------------------------
+    this.bot.action(/^sched_(.+)$/, async (ctx) => {
+      const choice = ctx.match[1];
+      const chatId = String(ctx.chat.id);
+
+      let schedule = { frequency: "daily", preferredHour: 19, timezone: "Asia/Kolkata" };
+      let scheduleLabel = "Daily at 7:00 PM";
+
+      if (choice === "9") {
+        schedule = { frequency: "daily", preferredHour: 9, timezone: "Asia/Kolkata" };
+        scheduleLabel = "Daily at 9:00 AM";
+      } else if (choice === "13") {
+        schedule = { frequency: "daily", preferredHour: 13, timezone: "Asia/Kolkata" };
+        scheduleLabel = "Daily at 1:00 PM";
+      } else if (choice === "19") {
+        schedule = { frequency: "daily", preferredHour: 19, timezone: "Asia/Kolkata" };
+        scheduleLabel = "Daily at 7:00 PM";
+      } else if (choice === "auto") {
+        schedule = { frequency: "daily", preferredHour: 10, timezone: "Asia/Kolkata" };
+        scheduleLabel = "Daily whenever ready (10 AM)";
+      } else if (choice === "3x") {
+        schedule = { frequency: "3x_week", preferredHour: 19, timezone: "Asia/Kolkata" };
+        scheduleLabel = "3 Times a Week (Mon / Wed / Fri at 7 PM)";
+      }
+
+      await this.usersService.updateUser(chatId, {
+        postingSchedule: schedule,
+        onboardingStep: "COMPLETED",
+        isOnboarded: true,
+      });
+
+      await ctx.answerCbQuery(`Schedule set to ${scheduleLabel}`);
+      await this.showCompletionCard(ctx, chatId, scheduleLabel);
+    });
+
+    // ----------------------------------------------------
+    // Approval & Skip Handlers
+    // ----------------------------------------------------
     this.bot.action(/^approve_(.+)$/, async (ctx) => {
       const draftId = ctx.match[1];
       try {
@@ -122,7 +273,6 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           parse_mode: "Markdown",
         });
 
-        // Publish to LinkedIn directly
         const pub = await this.publisher.publishApprovedDraft(draftId);
         await ctx.reply(
           `🚀 **Successfully Published to LinkedIn!**\n\n` +
@@ -131,7 +281,7 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           { parse_mode: "Markdown" }
         );
       } catch (err: any) {
-        this.logger.error(`Approve handler error: ${err.message}`);
+        this.logger.error(`Approve error: ${err.message}`);
         await ctx.answerCbQuery(`Error: ${err.message}`);
         await ctx.reply(`⚠️ Approval/Publish error: ${err.message}`);
       }
@@ -144,35 +294,41 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
         await ctx.answerCbQuery("❌ Draft Skipped");
         await ctx.reply(`❌ Draft **${draftId}** was skipped.`, { parse_mode: "Markdown" });
       } catch (err: any) {
-        this.logger.error(`Reject handler error: ${err.message}`);
+        this.logger.error(`Reject error: ${err.message}`);
         await ctx.answerCbQuery(`Error: ${err.message}`);
         await ctx.reply(`⚠️ Skip error: ${err.message}`);
       }
     });
 
-    // Text commands like "APPROVE GL-..."
-    this.bot.hears(/^APPROVE\s+([A-Z0-9-]+)$/i, async (ctx) => {
-      const draftId = ctx.match[1].trim();
-      try {
-        await this.draftsService.approveDraft(draftId, `telegram_${ctx.from.id}`);
-        const pub = await this.publisher.publishApprovedDraft(draftId);
-        await ctx.reply(`🚀 Published **${draftId}** to LinkedIn! Post ID: \`${pub.postId}\``, {
-          parse_mode: "Markdown",
-        });
-      } catch (err: any) {
-        await ctx.reply(`Approval/Publish failed: ${err.message}`);
-      }
-    });
-
-    // ANY text message -> DIRECT PROMPT FOR NEW DRAFT!
+    // ----------------------------------------------------
+    // Text Messages Router
+    // ----------------------------------------------------
     this.bot.on("text", async (ctx) => {
       const text = ctx.message.text.trim();
       const chatId = String(ctx.chat.id);
 
-      // Skip commands like /start or APPROVE
-      if (text.startsWith("/") || text.startsWith("APPROVE")) return;
+      if (text.startsWith("/")) return;
 
       const user = await this.usersService.getUser(chatId);
+      const step = user?.onboardingStep || "COMPLETED";
+
+      // If user is currently in Q1 (Name)
+      if (step === "NAME") {
+        await this.usersService.updateUser(chatId, { name: text, onboardingStep: "POSITION" });
+        await ctx.reply(`Nice to meet you, **${text}**!`, { parse_mode: "Markdown" });
+        await this.promptPositionQuestion(ctx, user?.positions || []);
+        return;
+      }
+
+      // If user is currently in Q4 (Custom background bio)
+      if (step === "CUSTOM_DATA") {
+        await this.usersService.updateUser(chatId, { bioContext: text, onboardingStep: "SCHEDULE" });
+        await ctx.reply(`✅ Voice & background saved!`, { parse_mode: "Markdown" });
+        await this.promptScheduleQuestion(ctx);
+        return;
+      }
+
+      // Otherwise: Treat message as an ON-DEMAND POST GENERATION PROMPT!
       if (!user || !user.linkedIn?.accessToken) {
         const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
         const authUrl = `${baseUrl}/auth/linkedin?userId=${chatId}`;
@@ -189,16 +345,12 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
       });
 
       try {
-        // 1. Generate text and image prompt
         const content = await this.contentService.generatePost(text, chatId);
-
-        // 2. Generate Pollinations visual
         const imgResult = await this.imageService.generateImage(content.imagePrompt, {
           userPhotoUrl: user.professionalPhotoPath,
           preferFaceReference: Boolean(user.professionalPhotoPath),
         });
 
-        // 3. Create Draft in MongoDB
         const draft = await this.draftsService.createDraft({
           userId: chatId,
           text: content.text,
@@ -212,7 +364,6 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           },
         });
 
-        // 4. Send preview with interactive Approve & Skip buttons
         const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
         await this.sendDraftPreview(chatId, {
           draftId: draft.draftId,
@@ -225,10 +376,96 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           prompt: imgResult.prompt,
         });
       } catch (err: any) {
-        this.logger.error(`Error generating post from Telegram prompt: ${err.message}`);
+        this.logger.error(`Error generating draft from Telegram: ${err.message}`);
         await ctx.reply(`❌ Failed to generate draft: ${err.message}`);
       }
     });
+  }
+
+  private async promptPositionQuestion(ctx: any, selected: string[] = []) {
+    await ctx.reply(
+      `💼 **Question 2 of 5: What is your primary role/position?**\n` +
+        `*(Multi-select: Tap all that apply, then tap Save & Continue)*`,
+      {
+        parse_mode: "Markdown",
+        ...this.buildPositionsKeyboard(selected),
+      }
+    );
+  }
+
+  private async promptSkillsQuestion(ctx: any, selected: string[] = []) {
+    await ctx.reply(
+      `🛠️ **Question 3 of 5: What are your key technical skills & interests?**\n` +
+        `*(Multi-select: Tap all that apply, then tap Save & Continue)*`,
+      {
+        parse_mode: "Markdown",
+        ...this.buildSkillsKeyboard(selected),
+      }
+    );
+  }
+
+  private async promptScheduleQuestion(ctx: any) {
+    await ctx.reply(
+      `⏰ **Question 5 of 5: How would you like to schedule your posts?**\n\n` +
+        `Select your preferred schedule for daily automated drafting:`,
+      {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback("🌅 Daily at 9:00 AM", "sched_9")],
+          [Markup.button.callback("☀️ Daily at 1:00 PM", "sched_13")],
+          [Markup.button.callback("🌙 Daily at 7:00 PM", "sched_19")],
+          [Markup.button.callback("⚡ Whenever Ready (Auto-Morning)", "sched_auto")],
+          [Markup.button.callback("📅 3x a Week (Mon / Wed / Fri)", "sched_3x")],
+        ]),
+      }
+    );
+  }
+
+  private async showCompletionCard(ctx: any, chatId: string, scheduleLabel: string) {
+    const user = await this.usersService.getUser(chatId);
+    const positions = user?.positions?.join(", ") || user?.role || "Developer";
+    const skills = user?.skills?.join(", ") || "Systems & Cloud";
+    const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
+    const authUrl = `${baseUrl}/auth/linkedin?userId=${chatId}`;
+
+    const summary =
+      `🎉 **Setup Complete! Your Profile is Configured:**\n\n` +
+      `👤 **Name:** ${user?.name || "Professional"}\n` +
+      `💼 **Roles:** ${positions}\n` +
+      `🛠️ **Skills:** ${skills}\n` +
+      `⏰ **Schedule:** ${scheduleLabel}\n` +
+      `${user?.bioContext ? `📝 **Voice Background:** ${user.bioContext}\n` : ""}\n` +
+      `──────────────────────────────`;
+
+    if (!user?.linkedIn?.accessToken) {
+      if (this.isValidTelegramButtonUrl(authUrl)) {
+        await ctx.reply(
+          `${summary}\n\n` +
+            `👉 **Final Step:** Tap below to link your LinkedIn account (0 keys needed):`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.url("🔗 Connect LinkedIn Profile", authUrl)],
+            ]),
+          }
+        );
+      } else {
+        await ctx.reply(
+          `${summary}\n\n` +
+            `👉 **Final Step:** Connect your LinkedIn profile:\n\n` +
+            `👉 **[Click Here to Connect LinkedIn](${authUrl})**`,
+          { parse_mode: "Markdown" }
+        );
+      }
+    } else {
+      await ctx.reply(
+        `${summary}\n\n` +
+          `✅ **LinkedIn Account Connected!**\n\n` +
+          `Your automated posts will arrive based on your schedule (**${scheduleLabel}**).\n` +
+          `Or, you can send me **any topic right now** to generate an instant post!`,
+        { parse_mode: "Markdown" }
+      );
+    }
   }
 
   async sendDraftPreview(channelUserId: string, payload: DraftPreviewPayload): Promise<void> {

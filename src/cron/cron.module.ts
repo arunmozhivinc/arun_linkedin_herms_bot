@@ -6,6 +6,7 @@ import { DraftsModule } from "../drafts/drafts.module";
 import { ImageModule } from "../image/image.module";
 import { ChannelsModule } from "../channels/channels.module";
 import { LinkedInModule } from "../linkedin/linkedin.module";
+import { ContentModule } from "../content/content.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { LinkedInModule } from "../linkedin/linkedin.module";
     ImageModule,
     ChannelsModule,
     LinkedInModule,
+    ContentModule,
   ],
   providers: [DailyPosterService],
   exports: [DailyPosterService],

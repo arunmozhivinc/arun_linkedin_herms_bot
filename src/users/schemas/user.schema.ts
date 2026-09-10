@@ -5,20 +5,33 @@ export type UserDocument = User & Document;
 
 @Schema({ timestamps: true })
 export class User {
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ type: String, required: true, unique: true, index: true })
   telegramUserId: string;
 
-  @Prop({ default: "" })
+  @Prop({ type: String, default: "" })
   name: string;
 
-  @Prop({ default: "Software Professional" })
+  @Prop({ type: String, default: "Software Professional" })
   role: string;
+
+  @Prop({ type: [String], default: [] })
+  positions: string[];
 
   @Prop({ type: [String], default: [] })
   topics: string[];
 
   @Prop({ type: [String], default: [] })
   skills: string[];
+
+  @Prop({ type: String, default: "" })
+  bioContext: string;
+
+  @Prop({
+    type: String,
+    default: "COMPLETED",
+    enum: ["NAME", "POSITION", "SKILLS", "CUSTOM_DATA", "SCHEDULE", "COMPLETED"],
+  })
+  onboardingStep: string;
 
   @Prop({
     type: [
@@ -40,7 +53,7 @@ export class User {
     type: Object,
     default: {
       frequency: "daily",
-      preferredHour: 10,
+      preferredHour: 19, // default 7:00 PM
       timezone: "Asia/Kolkata",
     },
   })
@@ -50,7 +63,7 @@ export class User {
     timezone: string;
   };
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   professionalPhotoPath: string;
 
   @Prop({
@@ -65,12 +78,11 @@ export class User {
     profileName?: string;
   } | null;
 
-  @Prop({ default: false })
+  @Prop({ type: Boolean, default: false })
   isOnboarded: boolean;
 
-  @Prop({ default: "telegram" })
+  @Prop({ type: String, default: "telegram" })
   channel: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
-

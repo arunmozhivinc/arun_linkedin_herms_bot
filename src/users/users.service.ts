@@ -159,8 +159,36 @@ export class UsersService {
     return Array.from(this.localUsers.values()).filter((u) => u.linkedIn?.accessToken);
   }
 
+  async toggleUserPosition(telegramUserId: string, position: string): Promise<string[]> {
+    const user = await this.findOrCreateUser(telegramUserId);
+    const current: string[] = user.positions || [];
+    const index = current.indexOf(position);
+    let updated: string[];
+    if (index >= 0) {
+      updated = current.filter((p) => p !== position);
+    } else {
+      updated = [...current, position];
+    }
+    await this.updateUser(telegramUserId, { positions: updated, role: updated.join(" / ") || user.role });
+    return updated;
+  }
+
+  async toggleUserSkill(telegramUserId: string, skill: string): Promise<string[]> {
+    const user = await this.findOrCreateUser(telegramUserId);
+    const current: string[] = user.skills || [];
+    const index = current.indexOf(skill);
+    let updated: string[];
+    if (index >= 0) {
+      updated = current.filter((s) => s !== skill);
+    } else {
+      updated = [...current, skill];
+    }
+    await this.updateUser(telegramUserId, { skills: updated, topics: updated });
+    return updated;
+  }
+
   /**
-   * Builds the authentic developer profile for Hermes dynamically per user.
+   * Builds the authentic developer profile for Hermes & Content Engine dynamically per user.
    */
   async buildStyleProfile(telegramUserId?: string): Promise<any> {
     let user = telegramUserId ? await this.getUser(telegramUserId) : null;
@@ -169,12 +197,16 @@ export class UsersService {
       user = active[0] || (await this.findOrCreateUser("default", "Platform Member"));
     }
 
+    const positions = user.positions && user.positions.length > 0 ? user.positions.join(" / ") : user.role || "Software Professional";
+    const skills = user.skills && user.skills.length > 0 ? user.skills : ["Node.js", "TypeScript", "System Design"];
+
     return {
       author: user.name || "Software Engineer",
-      role: user.role || "Full-Stack Engineer",
-      topics: user.topics || ["Software Engineering"],
-      skills: user.skills || ["Node.js", "TypeScript", "React", "Cloud"],
-      projects: user.projects || [],
+      role: positions,
+      skills,
+      bioContext: user.bioContext || "",
+      topics: user.topics && user.topics.length > 0 ? user.topics : skills,
+      schedule: user.postingSchedule || { frequency: "daily", preferredHour: 19 },
       post_structure_rules: {
         hook: "Start with an unexpected technical reality, metric, or real production lesson.",
         storytelling: "Anchor in real technical challenges and engineering trade-offs.",
