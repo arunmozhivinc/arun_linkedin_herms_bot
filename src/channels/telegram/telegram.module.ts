@@ -5,6 +5,7 @@ import { DraftsModule } from "../../drafts/drafts.module";
 import { ContentModule } from "../../content/content.module";
 import { ImageModule } from "../../image/image.module";
 import { LinkedInModule } from "../../linkedin/linkedin.module";
+import { TelegramController } from "./telegram.controller";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { LinkedInModule } from "../../linkedin/linkedin.module";
     ImageModule,
     LinkedInModule,
   ],
+  controllers: [TelegramController],
   providers: [TelegramService],
   exports: [TelegramService],
 })

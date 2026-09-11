@@ -58,7 +58,7 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
     private readonly publisher: LinkedInPublisherService
   ) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     const token = this.config.get<string>("telegram.botToken");
     if (!token) {
       this.logger.warn("TELEGRAM_BOT_TOKEN not configured. Telegram bot listener disabled.");
@@ -73,9 +73,35 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
       });
 
       this.setupHandlers();
-      this.launchBotWithRetry();
+
+      const rawBaseUrl = this.config.get<string>("baseUrl");
+      const baseUrl = (rawBaseUrl || "").replace(/\/+$/, "");
+
+      if (
+        baseUrl &&
+        baseUrl.startsWith("https://") &&
+        !baseUrl.includes("localhost") &&
+        !baseUrl.includes("127.0.0.1")
+      ) {
+        // Production Cloud Mode (Render): Use Webhooks. 100% eliminates 409 getUpdates conflict!
+        const webhookUrl = `${baseUrl}/telegram/webhook`;
+        this.logger.log(`Registering Telegram Webhook at: ${webhookUrl}`);
+        await this.bot.telegram.setWebhook(webhookUrl, { drop_pending_updates: false });
+        this.logger.log("✅ Telegram Webhook successfully active and listening!");
+      } else {
+        // Local Development Mode: Use long polling with clean webhook deletion
+        this.logger.log("Local mode detected. Clearing webhooks and starting polling...");
+        await this.bot.telegram.deleteWebhook({ drop_pending_updates: false });
+        this.launchBotWithRetry();
+      }
     } catch (err: any) {
       this.logger.error(`Error initializing Telegram bot: ${err.message}`);
+    }
+  }
+
+  async handleUpdate(update: any) {
+    if (this.bot) {
+      await this.bot.handleUpdate(update);
     }
   }
 
