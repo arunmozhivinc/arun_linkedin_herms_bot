@@ -73,15 +73,27 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
       });
 
       this.setupHandlers();
-
-      this.bot.launch().catch((err) => {
-        this.logger.error(`Failed to launch Telegram bot: ${err.message}`);
-      });
-
-      this.logger.log("Telegram Bot successfully launched and listening!");
+      this.launchBotWithRetry();
     } catch (err: any) {
       this.logger.error(`Error initializing Telegram bot: ${err.message}`);
     }
+  }
+
+  private launchBotWithRetry(retries = 10, delayMs = 5000) {
+    if (!this.bot) return;
+    this.bot
+      .launch()
+      .then(() => {
+        this.logger.log("Telegram Bot successfully launched and listening!");
+      })
+      .catch(async (err: any) => {
+        this.logger.error(`Failed to launch Telegram bot: ${err.message}`);
+        if (retries > 0) {
+          this.logger.log(`Retrying Telegram bot launch in ${delayMs / 1000}s... (${retries} retries left)`);
+          await new Promise((res) => setTimeout(res, delayMs));
+          this.launchBotWithRetry(retries - 1, delayMs);
+        }
+      });
   }
 
   private isValidTelegramButtonUrl(url?: string): boolean {
