@@ -40,6 +40,10 @@ export class DailyPosterService {
     const now = new Date();
 
     for (const user of activeUsers) {
+      if (user.schedulingPaused) {
+        continue;
+      }
+
       try {
         const schedule = user.postingSchedule || {
           frequency: "daily",
@@ -87,23 +91,64 @@ export class DailyPosterService {
   }
 
   /**
-   * Generates a creator-style draft post and sends preview to user's Telegram.
+   * 2-Minute Test Cron Job.
+   * Runs every 2 minutes for testing users with frequency === "test_2min" and scheduling not paused.
    */
-  async processUserDailyDraft(user: any, customPrompt?: string) {
-    const userId = user.telegramUserId;
-    const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
+  @Cron("*/2 * * * *")
+  async handleTestTwoMinuteCron() {
+    const activeUsers = await this.usersService.getAllActiveUsers();
+    const testUsers = activeUsers.filter(
+      (u) => u.postingSchedule?.frequency === "test_2min" && !u.schedulingPaused
+    );
 
-    // Check if user already has an unreviewed pending draft
-    const pendingDrafts = await this.draftsService.listDrafts({ userId, status: "PENDING_APPROVAL" });
-    if (pendingDrafts.length > 0) {
-      this.logger.log(
-        `User ${userId} already has ${pendingDrafts.length} pending draft(s). Skipping automatic generation.`
-      );
+    if (testUsers.length === 0) return;
+
+    this.logger.log(`Executing 2-minute test cron for ${testUsers.length} test user(s)...`);
+    for (const user of testUsers) {
+      try {
+        await this.processUserDailyDraft(user, undefined, true);
+      } catch (err: any) {
+        this.logger.error(`Error in 2-min test cron for user ${user.telegramUserId}: ${err.message}`);
+      }
+    }
+  }
+
+  /**
+   * Render Free-Tier Keep-Alive Self-Ping.
+   * Pings own baseUrl every 10 minutes so Render instances never sleep after 15 min of inactivity.
+   */
+  @Cron("*/10 * * * *")
+  async handleKeepAlivePing() {
+    const baseUrl = this.config.get<string>("baseUrl");
+    if (!baseUrl || baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1")) {
       return;
     }
 
-    // Check if a draft was generated within the last 18 hours to prevent duplicate daily posts
-    if (!customPrompt) {
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      this.logger.log(`Render keep-alive self-ping (${baseUrl}/health): ${res.status}`);
+    } catch (err: any) {
+      this.logger.warn(`Render keep-alive ping failed: ${err.message}`);
+    }
+  }
+
+  /**
+   * Generates a creator-style draft post and sends preview to user's Telegram.
+   */
+  async processUserDailyDraft(user: any, customPrompt?: string, isTest = false) {
+    const userId = user.telegramUserId;
+    const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
+
+    // Check if user already has an unreviewed pending draft (only in production schedule, bypassed in test mode)
+    if (!customPrompt && !isTest) {
+      const pendingDrafts = await this.draftsService.listDrafts({ userId, status: "PENDING_APPROVAL" });
+      if (pendingDrafts.length > 0) {
+        this.logger.log(
+          `User ${userId} already has ${pendingDrafts.length} pending draft(s). Skipping automatic generation.`
+        );
+        return;
+      }
+
       const recentDrafts = await this.draftsService.listDrafts({ userId });
       const createdRecently = recentDrafts.some((d: any) => {
         const diffHours = (Date.now() - new Date(d.createdAt).getTime()) / (1000 * 60 * 60);
@@ -120,7 +165,7 @@ export class DailyPosterService {
     // 1. Synthesize content based on user's selected skills, bio context, and creator archetypes
     const content = await this.contentService.generatePost(customPrompt || "", userId);
 
-    // 2. Generate high-quality visual via Pollinations.ai (1200x627)
+    // 2. Generate high-quality visual via HuggingFace (primary) or Pollinations.ai (fallback)
     const imageResult = await this.imageService.generateImage(content.imagePrompt, {
       userPhotoUrl: user.professionalPhotoPath,
       preferFaceReference: Boolean(user.professionalPhotoPath),
@@ -137,10 +182,11 @@ export class DailyPosterService {
         url: imageResult.url,
         localPath: imageResult.localPath,
         prompt: imageResult.prompt,
+        provider: imageResult.provider,
       },
     });
 
-    // 4. Send interactive draft preview with [✅ Approve] & [❌ Skip] directly in Telegram
+    // 4. Send interactive draft preview with [✅ Approve], [❌ Skip], & [🖼️ Replace Image] directly in Telegram
     await this.telegramService.sendDraftPreview(userId, {
       draftId: draft.draftId,
       postType: "SHORT_POST",
@@ -148,7 +194,8 @@ export class DailyPosterService {
       topic: draft.metadata?.topic,
       previewUrl: `${baseUrl}/drafts/${draft.draftId}`,
       approvalUrl: `${baseUrl}/drafts/${draft.draftId}/approve`,
-      imageUrl: imageResult.url,
+      imageUrl: imageResult.url?.startsWith("http") ? imageResult.url : undefined,
+      localImagePath: imageResult.localPath,
       prompt: imageResult.prompt,
     });
 

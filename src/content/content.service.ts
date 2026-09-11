@@ -11,8 +11,8 @@ interface CreatorArchetype {
 export class ContentService {
   private readonly logger = new Logger(ContentService.name);
 
-  // Proven high-engagement developer creator archetypes (inspired by top tech creators)
-  private readonly archetypes: CreatorArchetype[] = [
+  // 1. Engineering / Tech Archetypes
+  private readonly techArchetypes: CreatorArchetype[] = [
     {
       name: "ARCHITECTURAL_TEARDOWN",
       generate: (skill, user) => ({
@@ -77,10 +77,109 @@ export class ContentService {
     },
   ];
 
+  // 2. UI/UX & Design Archetypes
+  private readonly designArchetypes: CreatorArchetype[] = [
+    {
+      name: "DESIGN_SYSTEM_TEARDOWN",
+      generate: (skill, user) => ({
+        text:
+          `Why most ${skill} setups look stunning in Figma but fall apart in production:\n\n` +
+          `The failure is rarely visual — it's systemic. Designers build for static screen layouts; engineers build for dynamic states, variable content lengths, and localization.\n\n` +
+          `3 rules we use to bridge the gap between design tokens and implementation:\n\n` +
+          `1. Tokenize Semantics, Not Just Hex Values: Never name a color "$blue-500". Name it "$color-surface-action" so dark mode and theme refactors don't require rewriting 80 components.\n\n` +
+          `2. Stress-test With Real Content Early: Design every component with 3x longer text and empty states before marking it ready for sprint handoff.\n\n` +
+          `3. Accessibility as a Constraint, Not a Checklist: 4.5:1 contrast ratios and keyboard navigation focus states make interfaces clearer for everyone, not just screen readers.\n\n` +
+          `${user.bioContext ? `Context: Learned while designing ${user.bioContext}.\n\n` : ""}` +
+          `What's your biggest pain point when scaling design systems?`,
+        imagePrompt: `Clean modern UI/UX design workspace showing design system token components and elegant wireframes on sleek digital tablet, minimalist aesthetic, warm lighting, 8k`,
+      }),
+    },
+    {
+      name: "CONTRARIAN_UX_LESSON",
+      generate: (skill, user) => ({
+        text:
+          `An unpopular design opinion: Dribbble aesthetics are actively hurting product conversion.\n\n` +
+          `We love low-contrast grey typography, floating 3D glassmorphism, and hidden menus until we look at real user session recordings.\n\n` +
+          `When a user is trying to complete a checkout or configure a dashboard at 9 AM on a commute:\n\n` +
+          `• Clarity crushes cleverness every time.\n` +
+          `• A prominent, unmistakable button with clear copy beats subtle micro-animations.\n` +
+          `• Predictable navigation reduces cognitive friction far more than bespoke UI patterns.\n\n` +
+          `The most effective interface is often the one the user forgets they are interacting with.\n\n` +
+          `Do you prioritize visual novelty or frictionless utility in ${skill}?`,
+        imagePrompt: `Sleek high-contrast modern UI wireframe comparison showing clean UX flow against cluttered layout, dark mode aesthetic, crisp typography focus, photorealistic`,
+      }),
+    },
+    {
+      name: "USER_RESEARCH_DISCOVERY",
+      generate: (skill, user) => ({
+        text:
+          `What 25 usability testing sessions taught us about ${skill}:\n\n` +
+          `We were convinced users dropped off during onboarding because the step count was too long. The data proved us completely wrong.\n\n` +
+          `The root issue was ambiguity in step 2. Users weren't fatigued — they were anxious about committing without knowing if they could edit later.\n\n` +
+          `What changed after 3 small tweaks:\n\n` +
+          `1. Added a persistent progress indicator and reassurance copy ("You can change this anytime in settings").\n` +
+          `2. Replaced dense explanatory paragraphs with progressive disclosure tooltips.\n` +
+          `3. Reduced form inputs per screen from 5 to 2.\n\n` +
+          `Completion rate jumped +38% in 14 days.\n\n` +
+          `Never assume why users abandon flows — watch them try to use it without speaking.`,
+        imagePrompt: `Modern user experience research laboratory visual with usability heatmaps, journey maps, and interface telemetry on ultra-clean curved displays, cinematic dark theme, 8k`,
+      }),
+    },
+  ];
+
+  // 3. Product Management, Research & Growth Archetypes
+  private readonly productArchetypes: CreatorArchetype[] = [
+    {
+      name: "FEATURE_ADOPTION_TEARDOWN",
+      generate: (skill, user) => ({
+        text:
+          `The painful truth about product development in ${skill}:\n\n` +
+          `Industry benchmark data shows that nearly 60% of software features built by agile teams are rarely or never used.\n\n` +
+          `How we stopped building features nobody asked for:\n\n` +
+          `1. The "Pain vs Frequency" Matrix: If a problem isn't experienced weekly or doesn't cost significant time/money, it doesn't get into the current quarter.\n\n` +
+          `2. Sell It Before Building It: Test demand with clickable prototypes and fake door experiments before committing 2 engineering sprints.\n\n` +
+          `3. Sunsetting Velocity: If a feature doesn't hit adoption thresholds within 90 days of release, evaluate deprecation instead of perpetual maintenance.\n\n` +
+          `${user.bioContext ? `Context: Built while leading ${user.bioContext}.\n\n` : ""}` +
+          `How does your team decide which backlog items actually make the roadmap?`,
+        imagePrompt: `Strategic product roadmap visualization on modern digital canvas with glowing metrics charts, clean data indicators, minimalist executive workspace, photorealistic`,
+      }),
+    },
+    {
+      name: "CONTRARIAN_PRODUCT_LESSON",
+      generate: (skill, user) => ({
+        text:
+          `A hard-earned lesson in ${skill}: Velocity is not the same as impact.\n\n` +
+          `Shipping 15 Jira tickets a week feels productive, but if none of those tickets move retention, activation, or revenue — you're running fast in the wrong direction.\n\n` +
+          `3 operational rules we now enforce:\n\n` +
+          `• Define the success metric BEFORE writing user stories: If you can't measure whether the release worked, you don't understand the problem yet.\n` +
+          `• Protect engineering focus ruthlessly: Say "no" to 8 good ideas so the 2 exceptional ones get the polish they deserve.\n` +
+          `• Talk to churned customers: Current power users will tell you what they like; churned users will tell you what's actually broken.\n\n` +
+          `What is your most important heuristic when evaluating product priorities?`,
+        imagePrompt: `Modern executive product desk with dual analytics dashboards displaying cohort retention curves and KPI trends, warm ambient lighting, crisp resolution, 8k`,
+      }),
+    },
+  ];
+
   constructor(
     private readonly config: ConfigService,
     private readonly usersService: UsersService
   ) {}
+
+  private getArchetypesForUser(user: any): CreatorArchetype[] {
+    const roles = (user.positions || []).join(" ").toLowerCase();
+    const skills = (user.skills || []).join(" ").toLowerCase();
+    const combined = `${roles} ${skills} ${user.role || ""}`.toLowerCase();
+
+    if (/design|ux|ui|figma|visual|creative/i.test(combined)) {
+      return this.designArchetypes;
+    }
+
+    if (/product|marketing|founder|growth|analyst|business|research/i.test(combined)) {
+      return this.productArchetypes;
+    }
+
+    return this.techArchetypes;
+  }
 
   /**
    * Generates a polished, viral LinkedIn post based on user skills, bio context, and top creator formats.
@@ -106,9 +205,18 @@ export class ContentService {
     }
 
     // Check for configured LLM API keys
+    const deepseekKey = process.env.DEEPSEEK_API_KEY || this.config.get<string>("deepseek.apiKey");
     const geminiKey = process.env.GEMINI_API_KEY;
     const groqKey = process.env.GROQ_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
+
+    if (deepseekKey) {
+      try {
+        return await this.generateWithDeepSeek(targetTopic, user, deepseekKey);
+      } catch (err: any) {
+        this.logger.warn(`DeepSeek generation failed: ${err.message}; falling back`);
+      }
+    }
 
     if (geminiKey) {
       try {
@@ -134,17 +242,21 @@ export class ContentService {
       }
     }
 
-    // Creator Archetype Synthesizer (rotates daily)
-    const dayIndex = new Date().getDate() % this.archetypes.length;
-    const archetype = this.archetypes[dayIndex];
+    // Persona-Adaptive Archetype Synthesizer (rotates daily)
+    const selectedArchetypes = this.getArchetypesForUser(user);
+    const dayIndex = new Date().getDate() % selectedArchetypes.length;
+    const archetype = selectedArchetypes[dayIndex];
     const generated = archetype.generate(targetTopic, user);
 
     const tags = [
       `#${targetTopic.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()}`,
-      "#softwareengineering",
-      "#systemdesign",
-      "#devcommunity",
-      "#techleadership",
+      user.positions?.some((p: string) => /design|ux|ui/i.test(p))
+        ? "#productdesign"
+        : user.positions?.some((p: string) => /product|marketing|founder|business|research/i.test(p))
+        ? "#productmanagement"
+        : "#softwareengineering",
+      "#leadership",
+      "#innovation",
     ];
 
     return {
@@ -153,6 +265,33 @@ export class ContentService {
       topic: targetTopic,
       tags,
     };
+  }
+
+  private async generateWithDeepSeek(topic: string, user: any, apiKey: string) {
+    const prompt = this.buildCreatorPrompt(topic, user);
+    const res = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an elite LinkedIn creator and subject matter practitioner. Write compelling, authentic, high-engagement insights. Return strictly valid JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      }),
+    });
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content;
+    return this.parseLlmOutput(raw, topic);
   }
 
   private async generateWithGemini(topic: string, user: any, apiKey: string) {
@@ -209,29 +348,39 @@ export class ContentService {
   }
 
   private buildCreatorPrompt(topic: string, user: any): string {
-    const positions = user.positions && user.positions.length > 0 ? user.positions.join(", ") : user.role || "Senior Software Engineer";
-    const skills = user.skills && user.skills.length > 0 ? user.skills.join(", ") : "Backend, Cloud, Systems";
+    const positions =
+      user.positions && user.positions.length > 0 ? user.positions.join(", ") : user.role || "Professional";
+    const skills = user.skills && user.skills.length > 0 ? user.skills.join(", ") : "Technology & Strategy";
+
+    const isDesign = /design|ux|ui|figma/i.test(positions);
+    const isProductOrBiz = /product|marketing|founder|growth|research|analyst/i.test(positions);
+
+    const personaContext = isDesign
+      ? "an influential product design and UX leader known for sharp teardowns of usability, design systems, and user behavior"
+      : isProductOrBiz
+      ? "a seasoned product manager, growth strategist, and startup operator known for data-backed lessons and practical frameworks"
+      : "an elite software architect and engineering practitioner (in the style of Alex Xu / ByteByteGo)";
 
     return `
-You are an expert LinkedIn ghostwriter for elite tech creators (like Alex Xu / ByteByteGo / Gergely Orosz).
+You are an expert LinkedIn ghostwriter for ${personaContext}.
 Author: ${user.name}
 Role/Position: ${positions}
 Core Skills: ${skills}
-Background context: ${user.bioContext || "High-scale production systems"}
+Background context: ${user.bioContext || "Modern industry workflows and real user impact"}
 
 Write a top-performing, insightful LinkedIn post centered around: "${topic}".
 
 STRICT FORMATTING RULES:
-1. Hook: Start with a punchy, counter-intuitive technical observation or unexpected production lesson.
-2. Value: Give 3 concrete, specific engineering principles or code/architecture heuristics.
+1. Hook: Start with a punchy, counter-intuitive observation or unexpected hard-earned lesson.
+2. Value: Give 3 concrete, specific heuristics, principles, or real-world takeaways.
 3. Formatting: Short paragraphs (1-2 sentences). Generous whitespace. No walls of text.
-4. Tone: Senior, humble, pragmatic, deeply technical. ZERO corporate buzzwords (no "delve", "game-changer", "unleash", "tapestry").
-5. Engagement: End with an open-ended engineering question for comments.
+4. Tone: Senior, humble, pragmatic, authentic. ZERO corporate buzzwords (no "delve", "game-changer", "unleash", "tapestry").
+5. Engagement: End with a thoughtful question for discussion in the comments.
 
 Respond ONLY with valid JSON in this structure:
 {
   "text": "Full post text",
-  "imagePrompt": "A detailed descriptive prompt for an AI image generator representing this technical topic (modern developer workstation or clean architecture diagram, photorealistic, 8k)",
+  "imagePrompt": "A single compelling visual metaphor or editorial concept representing this theme (e.g. minimalist digital workspace, system diagram, or conceptual illustration)",
   "tags": ["#tag1", "#tag2", "#tag3"]
 }
 `.trim();
@@ -245,14 +394,14 @@ Respond ONLY with valid JSON in this structure:
         text: parsed.text,
         imagePrompt: parsed.imagePrompt,
         topic: defaultTopic,
-        tags: parsed.tags || ["#softwareengineering", "#systemdesign"],
+        tags: parsed.tags || ["#linkedin", "#professionalgrowth"],
       };
     } catch {
       return {
         text: raw,
-        imagePrompt: `Clean software engineering architecture visual for ${defaultTopic}, photorealistic 8k`,
+        imagePrompt: `Clean modern editorial tech visual representing ${defaultTopic}`,
         topic: defaultTopic,
-        tags: ["#softwareengineering", "#tech"],
+        tags: ["#linkedin", "#insights"],
       };
     }
   }

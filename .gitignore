@@ -8,6 +8,8 @@ node_modules/
 
 # Runtime data (contains LinkedIn access tokens and personal data)
 data/users.json
+data/drafts.json
+data/images/
 
 # Build output (regenerate with: npm run build)
 dist/

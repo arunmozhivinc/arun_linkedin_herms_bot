@@ -84,6 +84,7 @@ export class UsersService {
         },
         linkedIn: null,
         isOnboarded: false,
+        schedulingPaused: false,
         createdAt: new Date().toISOString(),
       };
       this.localUsers.set(telegramUserId, newUser);
@@ -185,6 +186,10 @@ export class UsersService {
     }
     await this.updateUser(telegramUserId, { skills: updated, topics: updated });
     return updated;
+  }
+
+  async setSchedulingPaused(telegramUserId: string, paused: boolean): Promise<any> {
+    return this.updateUser(telegramUserId, { schedulingPaused: paused });
   }
 
   /**

@@ -232,6 +232,71 @@ export class DraftsService {
     return updated;
   }
 
+  async clearPendingDrafts(userId: string): Promise<number> {
+    let count = 0;
+    if (this.draftModel) {
+      try {
+        const res = await this.draftModel.updateMany(
+          { userId, status: "PENDING_APPROVAL" },
+          { $set: { status: "REJECTED", rejectionReason: "Cleared by user" } }
+        );
+        count = res.modifiedCount || 0;
+      } catch {
+        // fallback below
+      }
+    }
+
+    for (const [id, d] of this.localDrafts.entries()) {
+      if (d.userId === userId && d.status === "PENDING_APPROVAL") {
+        d.status = "REJECTED";
+        d.rejectionReason = "Cleared by user";
+        this.localDrafts.set(id, d);
+        count++;
+      }
+    }
+    this.saveLocalFallback();
+    return count;
+  }
+
+  async updateDraftMedia(draftId: string, media: any): Promise<any> {
+    const draft = await this.getDraft(draftId);
+    if (!draft) throw new Error(`Draft "${draftId}" not found.`);
+    if (draft.status === "PUBLISHED") throw new Error(`Cannot modify published draft "${draftId}".`);
+
+    const newHash = this.computeContentHash({
+      text: draft.text,
+      mediaPath: media?.localPath || media?.path || media?.url,
+    });
+
+    const updates = {
+      media,
+      contentHash: newHash,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (this.draftModel) {
+      try {
+        const updated = await this.draftModel.findOneAndUpdate(
+          { $or: [{ draftId }, { id: draftId }] },
+          { $set: updates },
+          { new: true }
+        );
+        if (updated) {
+          this.localDrafts.set(draftId, updated.toObject());
+          this.saveLocalFallback();
+          return updated.toObject();
+        }
+      } catch {
+        // fallback
+      }
+    }
+
+    const updated = { ...draft, ...updates };
+    this.localDrafts.set(draftId, updated);
+    this.saveLocalFallback();
+    return updated;
+  }
+
   /**
    * Airtight safety validation before publishing.
    */

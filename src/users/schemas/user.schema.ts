@@ -81,6 +81,9 @@ export class User {
   @Prop({ type: Boolean, default: false })
   isOnboarded: boolean;
 
+  @Prop({ type: Boolean, default: false })
+  schedulingPaused: boolean;
+
   @Prop({ type: String, default: "telegram" })
   channel: string;
 }

@@ -11,6 +11,7 @@ import { ChannelsModule } from "./channels/channels.module";
 import { CronModule } from "./cron/cron.module";
 import { McpModule } from "./mcp/mcp.module";
 import { ContentModule } from "./content/content.module";
+import { HealthController } from "./health/health.controller";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ContentModule } from "./content/content.module";
     CronModule,
     McpModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
 

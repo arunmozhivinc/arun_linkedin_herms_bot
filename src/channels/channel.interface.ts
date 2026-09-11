@@ -6,6 +6,7 @@ export interface DraftPreviewPayload {
   previewUrl: string;
   approvalUrl: string;
   imageUrl?: string;
+  localImagePath?: string;
   prompt?: string;
 }
 

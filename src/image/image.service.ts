@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PollinationsProvider } from "./pollinations.provider";
 import { FalAiProvider } from "./falai.provider";
+import { HuggingFaceProvider } from "./huggingface.provider";
 
 @Injectable()
 export class ImageService {
@@ -8,7 +9,8 @@ export class ImageService {
 
   constructor(
     private readonly pollinations: PollinationsProvider,
-    private readonly falAi: FalAiProvider
+    private readonly falAi: FalAiProvider,
+    private readonly huggingFace: HuggingFaceProvider
   ) {}
 
   async generateImage(
@@ -22,9 +24,22 @@ export class ImageService {
     url: string;
     localPath: string;
     prompt: string;
-    provider: "pollinations" | "falai";
+    provider: "huggingface" | "pollinations" | "falai" | "user_upload";
   }> {
-    // 1. If user uploaded a photo and Fal.ai is enabled, try face-reference generation
+    // 1. Primary: HuggingFace Inference API (if token configured)
+    if (this.huggingFace.isConfigured()) {
+      try {
+        const hfResult = await this.huggingFace.generateAndSave(prompt, options.draftId);
+        return {
+          ...hfResult,
+          provider: "huggingface",
+        };
+      } catch (err: any) {
+        this.logger.warn(`HuggingFace generation failed: ${err.message}; falling back to Pollinations/Fal`);
+      }
+    }
+
+    // 2. If user uploaded a photo and Fal.ai is enabled, try face-reference generation
     if (options.preferFaceReference && options.userPhotoUrl && this.falAi.isConfigured()) {
       const falResult = await this.falAi.generateFaceReferenceImage(
         prompt,
@@ -40,7 +55,7 @@ export class ImageService {
       this.logger.warn("Face reference generation fell back to Pollinations.ai");
     }
 
-    // 2. Default: Zero-cost, high-reliability Pollinations.ai Flux generation
+    // 3. Fallback: Zero-cost, high-reliability Pollinations.ai Flux generation with 7-layer brand rules
     const polResult = await this.pollinations.generateAndSave(prompt, options.draftId);
     return {
       ...polResult,

@@ -8,6 +8,9 @@ import { ContentService } from "../../content/content.service";
 import { ImageService } from "../../image/image.service";
 import { LinkedInPublisherService } from "../../linkedin/linkedin-publisher.service";
 
+import * as fs from "node:fs";
+import * as path from "node:path";
+
 const AVAILABLE_POSITIONS = [
   "Backend Developer",
   "Frontend Developer",
@@ -15,7 +18,11 @@ const AVAILABLE_POSITIONS = [
   "DevOps / Cloud Engineer",
   "AI / ML Engineer",
   "System Architect",
-  "Engineering Lead",
+  "UI / UX Designer",
+  "Product Manager",
+  "Research & Data Scientist",
+  "Marketing & Growth",
+  "Founder & Entrepreneur",
 ];
 
 const AVAILABLE_SKILLS = [
@@ -27,6 +34,12 @@ const AVAILABLE_SKILLS = [
   "React & Next.js",
   "System Design & Scale",
   "LLMs & AI Agents",
+  "UI/UX & Design Systems",
+  "User Research & Testing",
+  "Product Strategy & Roadmaps",
+  "Data Analytics & Metrics",
+  "SEO & Content Growth",
+  "No-Code & Automations",
 ];
 
 @Injectable()
@@ -34,6 +47,7 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
   private readonly logger = new Logger(TelegramService.name);
   readonly channelName = "telegram";
   private bot: Telegraf | null = null;
+  private readonly awaitingImageForDraft = new Map<string, string>(); // chatId -> draftId
 
   constructor(
     private readonly config: ConfigService,
@@ -248,16 +262,186 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
       } else if (choice === "3x") {
         schedule = { frequency: "3x_week", preferredHour: 19, timezone: "Asia/Kolkata" };
         scheduleLabel = "3 Times a Week (Mon / Wed / Fri at 7 PM)";
+      } else if (choice === "2min") {
+        schedule = { frequency: "test_2min", preferredHour: -1, timezone: "Asia/Kolkata" };
+        scheduleLabel = "Every 2 Minutes (🧪 Test Mode)";
+      } else if (choice === "pause") {
+        await this.usersService.setSchedulingPaused(chatId, true);
+        await ctx.answerCbQuery("Automated posting paused");
+        await ctx.reply(
+          `⏸️ **Automated Postings Paused!**\n\n` +
+            `I will not send you automated scheduled drafts.\n` +
+            `Type **/resume** at any time to re-enable, or send any topic for an instant post!`,
+          { parse_mode: "Markdown" }
+        );
+        return;
       }
 
       await this.usersService.updateUser(chatId, {
         postingSchedule: schedule,
         onboardingStep: "COMPLETED",
         isOnboarded: true,
+        schedulingPaused: false,
       });
 
       await ctx.answerCbQuery(`Schedule set to ${scheduleLabel}`);
       await this.showCompletionCard(ctx, chatId, scheduleLabel);
+    });
+
+    // ----------------------------------------------------
+    // Custom Image Replacement Request
+    // ----------------------------------------------------
+    this.bot.action(/^custom_img_(.+)$/, async (ctx) => {
+      const draftId = ctx.match[1];
+      const chatId = String(ctx.chat.id);
+      this.awaitingImageForDraft.set(chatId, draftId);
+      await ctx.answerCbQuery("Ready for your image!");
+      await ctx.reply(
+        `📸 **Send your custom image for Draft \`${draftId}\`:**\n\n` +
+          `Please send any photo or image attachment directly here in the chat.\n` +
+          `I will replace the visual and send you an updated draft preview card right away!`,
+        { parse_mode: "Markdown" }
+      );
+    });
+
+    // ----------------------------------------------------
+    // Bot Commands: /pause, /resume, /status, /schedule
+    // ----------------------------------------------------
+    this.bot.command("pause", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      await this.usersService.setSchedulingPaused(chatId, true);
+      await ctx.reply(
+        `⏸️ **Automated Scheduled Postings Paused**\n\n` +
+          `I will not send you scheduled drafts.\n` +
+          `Type **/resume** to restart them anytime, or send any topic to generate a post on-demand!`,
+        { parse_mode: "Markdown" }
+      );
+    });
+
+    this.bot.command("resume", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      await this.usersService.setSchedulingPaused(chatId, false);
+      const user = await this.usersService.getUser(chatId);
+      const sched = user?.postingSchedule || { frequency: "daily", preferredHour: 19 };
+      const label =
+        sched.frequency === "test_2min"
+          ? "Every 2 Minutes (🧪 Test Mode)"
+          : `${sched.frequency} at ${sched.preferredHour}:00`;
+      await ctx.reply(
+        `▶️ **Automated Postings Resumed!**\n\n` +
+          `Schedule: **${label}**\n` +
+          `Draft previews will arrive according to your cadence for human approval.`,
+        { parse_mode: "Markdown" }
+      );
+    });
+
+    this.bot.command("status", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const user = await this.usersService.getUser(chatId);
+      const sched = user?.postingSchedule || { frequency: "daily", preferredHour: 19 };
+      const isPaused = Boolean(user?.schedulingPaused);
+      const isConnected = Boolean(user?.linkedIn?.accessToken);
+      const schedLabel =
+        sched.frequency === "test_2min"
+          ? "Every 2 Minutes (🧪 Test Mode)"
+          : `${sched.frequency} at ${sched.preferredHour}:00`;
+
+      await ctx.reply(
+        `📊 **LinkedIn AutoPilot Status**\n\n` +
+          `👤 **User:** ${user?.name || "Member"}\n` +
+          `💼 **Roles:** ${user?.positions?.join(", ") || user?.role || "Not configured"}\n` +
+          `🛠️ **Skills:** ${user?.skills?.join(", ") || "Not configured"}\n` +
+          `⏰ **Schedule:** ${schedLabel}\n` +
+          `⏸️ **Automation:** ${isPaused ? "🔴 PAUSED (/resume to activate)" : "🟢 ACTIVE"}\n` +
+          `🔗 **LinkedIn:** ${isConnected ? `✅ Connected (${user.linkedIn.profileName || "Ready"})` : "❌ Not Connected"}\n\n` +
+          `Useful commands: /schedule, /pause, /resume`,
+        { parse_mode: "Markdown" }
+      );
+    });
+
+    this.bot.command("schedule", async (ctx) => {
+      await this.promptScheduleQuestion(ctx);
+    });
+
+    this.bot.command("clear", async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const count = await this.draftsService.clearPendingDrafts(chatId);
+      await ctx.reply(
+        `🧹 **Cleared ${count} Pending Draft(s)!**\n\n` +
+          `Your queue is now clean and ready for new post drafts.`,
+        { parse_mode: "Markdown" }
+      );
+    });
+
+    // ----------------------------------------------------
+    // User Photo / Image Upload Listener
+    // ----------------------------------------------------
+    this.bot.on(["photo", "document"], async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const draftId = this.awaitingImageForDraft.get(chatId);
+      if (!draftId) {
+        return;
+      }
+
+      try {
+        await ctx.reply(`⏳ Processing and replacing image for draft **${draftId}**...`, {
+          parse_mode: "Markdown",
+        });
+
+        let fileId: string | null = null;
+        const msg: any = ctx.message;
+        if (msg.photo && msg.photo.length > 0) {
+          fileId = msg.photo[msg.photo.length - 1].file_id;
+        } else if (msg.document && msg.document.mime_type?.startsWith("image/")) {
+          fileId = msg.document.file_id;
+        }
+
+        if (!fileId) {
+          await ctx.reply("⚠️ Please send a valid image (JPEG or PNG).");
+          return;
+        }
+
+        const fileLink = await ctx.telegram.getFileLink(fileId);
+        const res = await fetch(fileLink.href);
+        if (!res.ok) throw new Error("Failed to download image from Telegram");
+
+        const buffer = Buffer.from(await res.arrayBuffer());
+        const imagesDir = path.resolve(process.cwd(), "data/images");
+        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+
+        const filename = `${draftId}-custom-${Date.now()}.jpg`;
+        const localPath = path.join(imagesDir, filename);
+        fs.writeFileSync(localPath, buffer);
+
+        const updatedDraft = await this.draftsService.updateDraftMedia(draftId, {
+          type: "image",
+          url: `/data/images/${filename}`,
+          localPath,
+          prompt: "User custom image upload",
+          source: "user_upload",
+        });
+
+        this.awaitingImageForDraft.delete(chatId);
+
+        await ctx.reply(`✅ Visual replaced successfully! Updated draft preview below:`, {
+          parse_mode: "Markdown",
+        });
+
+        const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
+        await this.sendDraftPreview(chatId, {
+          draftId: updatedDraft.draftId,
+          postType: updatedDraft.postType || "SHORT_POST",
+          text: updatedDraft.text,
+          topic: updatedDraft.metadata?.topic,
+          previewUrl: `${baseUrl}/drafts/${updatedDraft.draftId}`,
+          approvalUrl: `${baseUrl}/drafts/${updatedDraft.draftId}/approve`,
+          localImagePath: localPath,
+          prompt: "Custom image uploaded by you",
+        });
+      } catch (err: any) {
+        this.logger.error(`Failed to replace custom image: ${err.message}`);
+        await ctx.reply(`❌ Failed to update image: ${err.message}`);
+      }
     });
 
     // ----------------------------------------------------
@@ -416,6 +600,8 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           [Markup.button.callback("🌙 Daily at 7:00 PM", "sched_19")],
           [Markup.button.callback("⚡ Whenever Ready (Auto-Morning)", "sched_auto")],
           [Markup.button.callback("📅 3x a Week (Mon / Wed / Fri)", "sched_3x")],
+          [Markup.button.callback("🧪 Every 2 Minutes (Testing)", "sched_2min")],
+          [Markup.button.callback("⏸️ Pause Automated Posts", "sched_pause")],
         ]),
       }
     );
@@ -492,6 +678,9 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
         Markup.button.callback("✅ Approve", `approve_${payload.draftId}`),
         Markup.button.callback("❌ Skip", `reject_${payload.draftId}`),
       ],
+      [
+        Markup.button.callback("🖼️ Replace With My Image", `custom_img_${payload.draftId}`),
+      ],
     ];
 
     if (isButtonUrlValid) {
@@ -501,7 +690,17 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
     const buttons = Markup.inlineKeyboard(keyboardRows);
 
     try {
-      if (payload.imageUrl) {
+      if (payload.localImagePath && fs.existsSync(payload.localImagePath)) {
+        await this.bot.telegram.sendPhoto(
+          channelUserId,
+          { source: payload.localImagePath },
+          {
+            caption,
+            parse_mode: "Markdown",
+            ...buttons,
+          }
+        );
+      } else if (payload.imageUrl) {
         await this.bot.telegram.sendPhoto(channelUserId, payload.imageUrl, {
           caption,
           parse_mode: "Markdown",

@@ -14,5 +14,12 @@ export default () => ({
   falAi: {
     apiKey: process.env.FAL_KEY || "",
   },
+  huggingface: {
+    token: process.env.HUGGINGFACE_TOKEN || "",
+    model: process.env.HUGGINGFACE_MODEL || "black-forest-labs/FLUX.1-dev",
+  },
+  deepseek: {
+    apiKey: process.env.DEEPSEEK_API_KEY || "",
+  },
 });
 

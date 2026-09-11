@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
+import { buildEditorialBrandPrompt } from "./huggingface.provider";
+
 @Injectable()
 export class PollinationsProvider {
   private readonly imagesDir = path.resolve(process.cwd(), "data/images");
@@ -13,16 +15,7 @@ export class PollinationsProvider {
   }
 
   styleDeveloperPrompt(rawPrompt: string): string {
-    const cleaned = (rawPrompt || "").trim();
-    if (!cleaned) {
-      return "Professional modern software engineering workspace, ultrawide monitor displaying clean code, warm ambient office lighting, cinematic composition, photorealistic, 8k";
-    }
-
-    if (cleaned.length > 80) {
-      return `${cleaned}, professional photography, high resolution, subtle tech aesthetic, cinematic lighting, crisp focus, no distorted text`;
-    }
-
-    return `Modern software engineering visual: ${cleaned}. Sleek developer workspace, dual monitors, subtle architecture diagrams and clean UI elements, cinematic depth of field, warm ambient lighting, highly detailed, photorealistic, no distorted text`;
+    return buildEditorialBrandPrompt(rawPrompt);
   }
 
   getDirectUrl(prompt: string, width = 1200, height = 627): string {
