@@ -384,6 +384,14 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           ? "Every 2 Minutes (🧪 Test Mode)"
           : `${sched.frequency} at ${sched.preferredHour}:00`;
 
+      const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
+      const authUrl = `${baseUrl}/auth/linkedin?userId=${chatId}`;
+      const buttons: any[] = [];
+
+      if (!isConnected && this.isValidTelegramButtonUrl(authUrl)) {
+        buttons.push([Markup.button.url("🔗 Connect LinkedIn Profile", authUrl)]);
+      }
+
       await ctx.reply(
         `📊 **LinkedIn AutoPilot Status**\n\n` +
           `👤 **User:** ${user?.name || "Member"}\n` +
@@ -392,8 +400,14 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           `⏰ **Schedule:** ${schedLabel}\n` +
           `⏸️ **Automation:** ${isPaused ? "🔴 PAUSED (/resume to activate)" : "🟢 ACTIVE"}\n` +
           `🔗 **LinkedIn:** ${isConnected ? `✅ Connected (${user.linkedIn.profileName || "Ready"})` : "❌ Not Connected"}\n\n` +
+          (!isConnected
+            ? `💡 *Using "Sign in with Google" on LinkedIn?*\nOpen the connect link in Chrome/Safari where you are already logged into LinkedIn (tap ⋮ -> "Open in Browser") to connect in 1 click!\n\n`
+            : "") +
           `Useful commands: /schedule, /pause, /resume`,
-        { parse_mode: "Markdown" }
+        {
+          parse_mode: "Markdown",
+          ...(buttons.length ? Markup.inlineKeyboard(buttons) : {}),
+        }
       );
     });
 
@@ -556,7 +570,9 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
         const authUrl = `${baseUrl}/auth/linkedin?userId=${chatId}`;
         await ctx.reply(
           `⚠️ You need to connect your LinkedIn profile first before generating posts!\n\n` +
-            `👉 [Click Here to Connect LinkedIn](${authUrl})`,
+            `👉 [Click Here to Connect LinkedIn](${authUrl})\n\n` +
+            `💡 *Using "Sign in with Google" on LinkedIn?*\n` +
+            `Open the link in **Chrome / Safari** where you are already signed into LinkedIn (tap ⋮ -> "Open in Browser") to connect in 1 click!`,
           { parse_mode: "Markdown" }
         );
         return;
@@ -662,10 +678,14 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
       `──────────────────────────────`;
 
     if (!user?.linkedIn?.accessToken) {
+      const guidance =
+        `👉 **Final Step:** Tap below to link your LinkedIn account (0 keys needed):\n\n` +
+        `💡 *Using "Sign in with Google" on LinkedIn?*\n` +
+        `Open the link in **Chrome / Safari** where you are already logged into LinkedIn (tap the 3 dots **⋮** -> *Open in Browser*) to connect in 1 click!`;
+
       if (this.isValidTelegramButtonUrl(authUrl)) {
         await ctx.reply(
-          `${summary}\n\n` +
-            `👉 **Final Step:** Tap below to link your LinkedIn account (0 keys needed):`,
+          `${summary}\n\n${guidance}`,
           {
             parse_mode: "Markdown",
             ...Markup.inlineKeyboard([
@@ -675,8 +695,7 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
         );
       } else {
         await ctx.reply(
-          `${summary}\n\n` +
-            `👉 **Final Step:** Connect your LinkedIn profile:\n\n` +
+          `${summary}\n\n${guidance}\n\n` +
             `👉 **[Click Here to Connect LinkedIn](${authUrl})**`,
           { parse_mode: "Markdown" }
         );
