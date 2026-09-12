@@ -380,7 +380,7 @@ STRICT FORMATTING RULES:
 Respond ONLY with valid JSON in this structure:
 {
   "text": "Full post text",
-  "imagePrompt": "A single compelling visual metaphor or editorial concept representing this theme (e.g. minimalist digital workspace, system diagram, or conceptual illustration)",
+  "imagePrompt": "A highly specific, photorealistic visual scene description representing the core technical, design, or business subject of this post (in the style of high-end editorial photography for Wired, MIT Tech Review, or Stripe Press). Describe a concrete physical subject, environment, lighting, depth of field, and textures. Do NOT request text, letters, or logos.",
   "tags": ["#tag1", "#tag2", "#tag3"]
 }
 `.trim();

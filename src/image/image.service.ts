@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PollinationsProvider } from "./pollinations.provider";
 import { FalAiProvider } from "./falai.provider";
 import { HuggingFaceProvider } from "./huggingface.provider";
+import { GeminiImageProvider } from "./gemini-image.provider";
 
 @Injectable()
 export class ImageService {
@@ -10,7 +11,8 @@ export class ImageService {
   constructor(
     private readonly pollinations: PollinationsProvider,
     private readonly falAi: FalAiProvider,
-    private readonly huggingFace: HuggingFaceProvider
+    private readonly huggingFace: HuggingFaceProvider,
+    private readonly geminiImage: GeminiImageProvider
   ) {}
 
   async generateImage(
@@ -24,9 +26,22 @@ export class ImageService {
     url: string;
     localPath: string;
     prompt: string;
-    provider: "huggingface" | "pollinations" | "falai" | "user_upload";
+    provider: "gemini" | "huggingface" | "pollinations" | "falai" | "user_upload";
   }> {
-    // 1. Primary: HuggingFace Inference API (if token configured)
+    // 1. Top Tier: Google Imagen 3 via Gemini API (highest resolution, photorealistic)
+    if (this.geminiImage.isConfigured()) {
+      try {
+        const geminiResult = await this.geminiImage.generateAndSave(prompt, options.draftId);
+        return {
+          ...geminiResult,
+          provider: "gemini",
+        };
+      } catch (err: any) {
+        this.logger.warn(`Google Imagen 3 generation failed: ${err.message}; falling back to next provider`);
+      }
+    }
+
+    // 2. HuggingFace Inference API (if token configured)
     if (this.huggingFace.isConfigured()) {
       try {
         const hfResult = await this.huggingFace.generateAndSave(prompt, options.draftId);
@@ -39,7 +54,7 @@ export class ImageService {
       }
     }
 
-    // 2. If user uploaded a photo and Fal.ai is enabled, try face-reference generation
+    // 3. Face-Reference: Fal.ai (if user uploaded a photo and Fal.ai is enabled)
     if (options.preferFaceReference && options.userPhotoUrl && this.falAi.isConfigured()) {
       const falResult = await this.falAi.generateFaceReferenceImage(
         prompt,
@@ -55,7 +70,7 @@ export class ImageService {
       this.logger.warn("Face reference generation fell back to Pollinations.ai");
     }
 
-    // 3. Fallback: Zero-cost, high-reliability Pollinations.ai Flux generation with 7-layer brand rules
+    // 4. Fallback: High-reliability Pollinations.ai with topic-tailored photographic prompt
     const polResult = await this.pollinations.generateAndSave(prompt, options.draftId);
     return {
       ...polResult,

@@ -15,13 +15,17 @@ export class PollinationsProvider {
   }
 
   styleDeveloperPrompt(rawPrompt: string): string {
-    return buildEditorialBrandPrompt(rawPrompt);
+    const cleaned = (rawPrompt || "").trim() || "Modern high-performance technology architecture";
+    if (cleaned.length > 80 && /photography|cinematic|detailed|macro|render/i.test(cleaned)) {
+      return `${cleaned}, 8k resolution, crisp focus, no text, no watermark, no logos`;
+    }
+    return `${cleaned}, professional editorial photography, striking composition, natural cinematic lighting, highly detailed, 8k resolution, crisp focus, photorealistic, no text, no watermark, no logos`;
   }
 
   getDirectUrl(prompt: string, width = 1200, height = 627): string {
     const styled = this.styleDeveloperPrompt(prompt);
     const seed = Math.floor(Math.random() * 1000000);
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(styled)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`;
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(styled)}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
   }
 
   async generateAndSave(prompt: string, draftId?: string, width = 1200, height = 627): Promise<{

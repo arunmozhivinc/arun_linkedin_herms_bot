@@ -21,5 +21,8 @@ export default () => ({
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY || "",
   },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || "",
+  },
 });
 
