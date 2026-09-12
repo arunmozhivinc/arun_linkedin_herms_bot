@@ -27,8 +27,8 @@ export class ImageService {
     localPath: string;
     prompt: string;
     provider: "gemini" | "huggingface" | "pollinations" | "falai" | "user_upload";
-  }> {
-    // 1. Top Tier: Google Imagen 3 via Gemini API (highest resolution, photorealistic)
+  } | null> {
+    // 1. Google Imagen 3 via Gemini API (if enabled with billing on Google Cloud)
     if (this.geminiImage.isConfigured()) {
       try {
         const geminiResult = await this.geminiImage.generateAndSave(prompt, options.draftId);
@@ -37,11 +37,11 @@ export class ImageService {
           provider: "gemini",
         };
       } catch (err: any) {
-        this.logger.warn(`Google Imagen 3 generation failed: ${err.message}; falling back to next provider`);
+        this.logger.warn(`Google Imagen 3 generation failed: ${err.message}`);
       }
     }
 
-    // 2. HuggingFace Inference API (if token configured)
+    // 2. HuggingFace Inference API (if dedicated endpoint configured)
     if (this.huggingFace.isConfigured()) {
       try {
         const hfResult = await this.huggingFace.generateAndSave(prompt, options.draftId);
@@ -50,7 +50,7 @@ export class ImageService {
           provider: "huggingface",
         };
       } catch (err: any) {
-        this.logger.warn(`HuggingFace generation failed: ${err.message}; falling back to Pollinations/Fal`);
+        this.logger.warn(`HuggingFace generation failed: ${err.message}`);
       }
     }
 
@@ -67,19 +67,17 @@ export class ImageService {
           provider: "falai",
         };
       }
-      this.logger.warn("Face reference generation fell back to Pollinations.ai");
     }
 
-    // 4. Fallback: High-reliability Pollinations.ai with topic-tailored photographic prompt
-    const polResult = await this.pollinations.generateAndSave(prompt, options.draftId);
-    return {
-      ...polResult,
-      provider: "pollinations",
-    };
+    // Pollinations disabled per user instruction. No automated fallback.
+    this.logger.log(
+      "Image generation: No active image provider succeeded; drafting post without AI visual. User can attach a custom image."
+    );
+    return null;
   }
 
   getPreviewUrl(prompt: string): string {
-    return this.pollinations.getDirectUrl(prompt);
+    return "";
   }
 }
 

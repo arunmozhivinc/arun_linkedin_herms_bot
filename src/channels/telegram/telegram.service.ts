@@ -594,12 +594,15 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           text: content.text,
           topic: content.topic,
           tags: content.tags,
-          media: {
-            type: "image",
-            url: imgResult.url,
-            localPath: imgResult.localPath,
-            prompt: imgResult.prompt,
-          },
+          media: imgResult
+            ? {
+                type: "image",
+                url: imgResult.url,
+                localPath: imgResult.localPath,
+                prompt: imgResult.prompt,
+                provider: imgResult.provider,
+              }
+            : null,
         });
 
         const baseUrl = this.config.get<string>("baseUrl") || "http://localhost:3000";
@@ -610,8 +613,9 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
           topic: draft.metadata?.topic,
           previewUrl: `${baseUrl}/drafts/${draft.draftId}`,
           approvalUrl: `${baseUrl}/drafts/${draft.draftId}/approve`,
-          imageUrl: imgResult.url,
-          prompt: imgResult.prompt,
+          localImagePath: imgResult?.localPath,
+          imageUrl: imgResult?.url,
+          prompt: imgResult?.prompt,
         });
       } catch (err: any) {
         this.logger.error(`Error generating draft from Telegram: ${err.message}`);
@@ -736,7 +740,10 @@ export class TelegramService implements INotificationChannel, OnModuleInit {
         Markup.button.callback("❌ Skip", `reject_${payload.draftId}`),
       ],
       [
-        Markup.button.callback("🖼️ Replace With My Image", `custom_img_${payload.draftId}`),
+        Markup.button.callback(
+          payload.localImagePath || payload.imageUrl ? "🖼️ Replace With My Image" : "🖼️ Attach My Image",
+          `custom_img_${payload.draftId}`
+        ),
       ],
     ];
 

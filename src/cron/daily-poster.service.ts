@@ -177,16 +177,18 @@ export class DailyPosterService {
       text: content.text,
       topic: content.topic,
       tags: content.tags,
-      media: {
-        type: "image",
-        url: imageResult.url,
-        localPath: imageResult.localPath,
-        prompt: imageResult.prompt,
-        provider: imageResult.provider,
-      },
+      media: imageResult
+        ? {
+            type: "image",
+            url: imageResult.url,
+            localPath: imageResult.localPath,
+            prompt: imageResult.prompt,
+            provider: imageResult.provider,
+          }
+        : null,
     });
 
-    // 4. Send interactive draft preview with [✅ Approve], [❌ Skip], & [🖼️ Replace Image] directly in Telegram
+    // 4. Send interactive draft preview with [✅ Approve], [❌ Skip], & [🖼️ Attach/Replace Image] directly in Telegram
     await this.telegramService.sendDraftPreview(userId, {
       draftId: draft.draftId,
       postType: "SHORT_POST",
@@ -194,9 +196,9 @@ export class DailyPosterService {
       topic: draft.metadata?.topic,
       previewUrl: `${baseUrl}/drafts/${draft.draftId}`,
       approvalUrl: `${baseUrl}/drafts/${draft.draftId}/approve`,
-      imageUrl: imageResult.url?.startsWith("http") ? imageResult.url : undefined,
-      localImagePath: imageResult.localPath,
-      prompt: imageResult.prompt,
+      imageUrl: imageResult?.url?.startsWith("http") ? imageResult.url : undefined,
+      localImagePath: imageResult?.localPath,
+      prompt: imageResult?.prompt,
     });
 
     this.logger.log(`Draft ${draft.draftId} created and dispatched to Telegram user ${userId}.`);

@@ -51,7 +51,7 @@ export class DraftsService {
     return crypto.createHash("sha256").update(`${text}|${mediaPath}`, "utf8").digest("hex");
   }
 
-  generateDraftId(): string {
+  async generateDraftId(): Promise<string> {
     const now = new Date();
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -59,10 +59,33 @@ export class DraftsService {
     const prefix = `GL-${yyyy}${mm}${dd}`;
 
     let maxSeq = 0;
+
+    if (this.draftModel) {
+      try {
+        const regex = new RegExp(`^${prefix}-\\d+`);
+        const latestDrafts = await this.draftModel
+          .find({ draftId: { $regex: regex } })
+          .select({ draftId: 1 })
+          .lean()
+          .exec();
+
+        for (const doc of latestDrafts) {
+          if (doc.draftId) {
+            const parts = doc.draftId.split("-");
+            const seq = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+          }
+        }
+      } catch (e: any) {
+        this.logger.warn(`Failed to inspect MongoDB for latest draft sequence: ${e.message}`);
+      }
+    }
+
     for (const d of this.localDrafts.values()) {
       const id = d.draftId || d.id || "";
       if (id.startsWith(prefix)) {
-        const seq = parseInt(id.split("-")[2], 10);
+        const parts = id.split("-");
+        const seq = parseInt(parts[parts.length - 1], 10);
         if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
       }
     }
@@ -85,7 +108,7 @@ export class DraftsService {
       throw new Error("Draft text cannot be empty.");
     }
 
-    const draftId = this.generateDraftId();
+    let draftId = await this.generateDraftId();
     const contentHash = this.computeContentHash({ text, mediaPath: media?.localPath || media?.path || media?.url });
 
     const draftPayload = {
@@ -117,6 +140,16 @@ export class DraftsService {
         this.saveLocalFallback();
         return created.toObject();
       } catch (err: any) {
+        // If draftId collision occurs (code 11000 duplicate key), append a unique random suffix and retry
+        if (err.code === 11000 || err.message?.includes("duplicate key")) {
+          const uniqueId = `${draftId}-${crypto.randomBytes(2).toString("hex")}`;
+          this.logger.warn(`Draft ID collision detected (${draftId}); saving as unique ID ${uniqueId}`);
+          draftPayload.draftId = uniqueId;
+          const retryCreated = await this.draftModel.create(draftPayload);
+          this.localDrafts.set(uniqueId, retryCreated.toObject());
+          this.saveLocalFallback();
+          return retryCreated.toObject();
+        }
         this.logger.warn(`Mongoose draft create failed: ${err.message}`);
       }
     }

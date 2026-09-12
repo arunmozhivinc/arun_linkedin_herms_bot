@@ -73,12 +73,14 @@ export async function bootstrapMcp() {
               userPhotoUrl: user?.professionalPhotoPath,
               preferFaceReference: Boolean(user?.professionalPhotoPath),
             });
-            media = {
-              type: "image",
-              url: imageResult.url,
-              localPath: imageResult.localPath,
-              prompt: imageResult.prompt,
-            };
+            if (imageResult) {
+              media = {
+                type: "image",
+                url: imageResult.url,
+                localPath: imageResult.localPath,
+                prompt: imageResult.prompt,
+              };
+            }
           }
 
           const draft = await draftsService.createDraft({
